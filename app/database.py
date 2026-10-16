@@ -48,6 +48,12 @@ def initialize(db):
         "sessions": ({"tokenHash": "string", "userId": "objectId", "createdAt": "date", "expiresAt": "date"}, []),
     }
     existing = set(db.list_collection_names())
+    # Preflight every collection before any collMod: old code must not downgrade a newer schema.
+    for name in schemas.keys() & existing:
+        options = db[name].options()
+        version_rule = options.get("validator", {}).get("$jsonSchema", {}).get("properties", {}).get("schemaVersion", {})
+        if version_rule.get("enum", [1]) != [1] or db[name].find_one({"schemaVersion": {"$ne": 1}}, {"_id": 1}):
+            raise RuntimeError(f"Unsupported schema in {name}; use the matching application or an explicit migration")
     for name, (fields, _) in schemas.items():
         props = {k: {"bsonType": t} for k, t in fields.items()}
         props["schemaVersion"] = {"bsonType": "int", "enum": [1]}

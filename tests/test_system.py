@@ -342,3 +342,61 @@ def test_T18_skipped_required_question_and_stats(env):
     assert stats["total"] == 1
     assert stats["questions"][0]["answered"] == 1
     assert stats["questions"][1]["answered"] == 0 and stats["questions"][1]["average"] is None
+
+
+def test_T19_response_contracts_and_frontend_fields(env):
+    from pydantic import TypeAdapter, ValidationError
+    from app.contracts import QuestionStatsOut
+    db, app, owner = env
+    spec = app.openapi()
+    operations = [operation for path, methods in spec["paths"].items() if path.startswith("/api/")
+                  for operation in methods.values()]
+    assert len(operations) == 17
+    for operation in operations:
+        for code, response in operation["responses"].items():
+            if code.startswith("2") or code in ("401", "403", "404", "409", "413", "422"):
+                assert response["content"]["application/json"]["schema"]
+    s = create(owner, [question(), question("multiple", "q2"), question("text", "q3"), question("number", "q4")])
+    db.surveys.update_one({"_id": ObjectId(s["id"])}, {"$set": {"futureInternalField": "private"}})
+    detail = owner.request("GET", f"/api/surveys/{s['id']}").json()
+    assert "futureInternalField" not in detail
+    assert {"id", "status", "editRevision", "token", "questions", "deadline"} <= detail.keys()
+    summary = owner.request("GET", "/api/surveys").json()[0]
+    assert "questions" not in summary and "futureInternalField" not in summary
+    preview = owner.request("POST", f"/api/surveys/{s['id']}/preview", {"answers": []}).json()
+    assert set(preview) == {"survey", "walk"}
+    assert preview["walk"] == {"path": ["q1"], "nextQuestionId": "q1", "ready": False}
+    assert "deadline" not in preview["survey"]  # Frontend must not assume fill and preview are identical.
+    s = publish(owner, s)
+    fill = owner.request("GET", f"/api/fill/{s['token']}").json()
+    assert {"deadline", "definitionVersion", "questions", "allowAnonymous"} <= fill.keys()
+    assert not {"ownerId", "token", "editRevision"} & fill.keys()
+    stats = owner.request("GET", f"/api/surveys/{s['id']}/stats").json()
+    adapter = TypeAdapter(QuestionStatsOut)
+    for item in stats["questions"]:
+        adapter.validate_python(item)
+        if item["kind"] in ("single", "multiple"):
+            assert "options" in item and "contents" not in item
+        else:
+            assert {"contents", "skip", "limit", "hasMore"} <= item.keys() and "options" not in item
+    assert stats["questions"][-1]["average"] is None
+    broken = dict(stats["questions"][-1]); broken.pop("average")
+    with pytest.raises(ValidationError):
+        adapter.validate_python(broken)
+
+
+@pytest.mark.parametrize("with_document", [False, True])
+def test_T20_old_initializer_does_not_overwrite_future_schema(env, with_document):
+    import copy
+    db, _, owner = env
+    s = create(owner)
+    validator = copy.deepcopy(db.surveys.options()["validator"])
+    validator["$jsonSchema"]["properties"]["schemaVersion"]["enum"] = [1, 2]
+    db.command("collMod", "surveys", validator=validator)
+    if with_document:
+        db.surveys.update_one({"_id": ObjectId(s["id"])}, {"$set": {"schemaVersion": 2}})
+    before = {name: db[name].options() for name in db.list_collection_names()}
+    with pytest.raises(RuntimeError, match="Unsupported schema"):
+        initialize(db)
+    assert before == {name: db[name].options() for name in db.list_collection_names()}
+    assert db.surveys.count_documents({}) == 1

@@ -1,6 +1,6 @@
 # API 使用说明
 
-本文供接口调用者和测试者使用。**唯一接口字段契约是运行中应用的 [OpenAPI](http://127.0.0.1:8009/openapi.json)**，由 [models.py](../app/models.py) 和 [main.py](../app/main.py) 自动生成；可通过 [Swagger 页面](http://127.0.0.1:8009/docs) 查看。本文只说明使用顺序、权限和调用约定，不复制一套字段表。启动方法见 [README](../README.md)。
+本文供接口调用者和测试者使用。**唯一接口字段契约是运行中应用的 [OpenAPI](http://127.0.0.1:8009/openapi.json)**，由 [请求模型](../app/models.py)、[输出模型](../app/contracts.py)和[路由声明](../app/main.py)自动生成；可通过 [Swagger 页面](http://127.0.0.1:8009/docs) 查看。本文提供输出结构的可读索引与前端依赖说明；精确类型和必填性在模型中维护，OpenAPI由同一模型生成，文档不另存JSON schema副本。启动方法见 [README](../README.md)。
 
 ## 认证与请求约定
 
@@ -34,3 +34,51 @@
 常见结果为 200 成功、201 创建成功、401 未登录或过期、403 CSRF/Origin 校验失败、404 不存在或无权访问、409 状态或版本冲突及重复填写、413 请求超过 2.5 MB、422 输入或业务校验失败。错误使用 `detail` 字段，不回显密码输入。
 
 可执行调用顺序见 [tests/test_system.py](../tests/test_system.py) 的 Browser、create、publish、payload 辅助函数和测试；完整示例生成工具见 [scripts/demo.py](../scripts/demo.py)，通过正式 API 创建，不直接写业务集合。它不覆盖已有同名示例。
+
+
+## 输出契约
+
+以下字段除显式说明外均必定返回；null是有意的空值，不等于缺字段。所有标识是字符串，时间是带时区的ISO字符串。数字题的数值字符串与计数整数不能混用。输出模型过滤新增的顶层内部存储字段；问题和选项结构复用现有请求模型，不保证任意新版嵌套结构可被旧程序读取。
+
+| 接口 | 成功结构 | 空值和省略规则 |
+| --- | --- | --- |
+| GET /api/session | SessionOut：user、csrf；user包含id和username | 未登录user=null，csrf仍存在 |
+| POST /api/register、/api/logout | MessageOut：message | 注册201，退出200 |
+| POST /api/login | LoginOut：username，并设置会话Cookie | 没有user或message字段；前端随后重新获取session |
+| GET /api/surveys | SurveySummaryOut数组 | 无问卷为[]，没有总数包装；刻意不含questions |
+| POST /api/surveys；GET/PUT /api/surveys/{id}；PATCH metadata；POST publish/close | SurveyOut：完整管理问卷 | 创建201，其余200；均含questions，写入结果含最新editRevision |
+| GET /api/fill/{token} | FillOut：title、description、questions、allowAnonymous、allowMultiple、deadline、definitionVersion | deadline可null；无管理id、ownerId、token、status、editRevision |
+| POST /api/fill/{token}/walk | WalkOut：path、nextQuestionId、ready | path按访问顺序；待答时包含当前题；ready=true时nextQuestionId=null，不表示已保存 |
+| POST /api/surveys/{id}/preview | PreviewOut：survey与walk | walk同上；survey仅含title、description、questions、allowAnonymous、allowMultiple，不含deadline和definitionVersion |
+| POST /api/fill/{token}/submit | SubmitOut：message、responseId、replayed | 新保存replayed=false，取回原结果true；成功均200 |
+| GET /api/surveys/{id}/stats | StatsOut：total、questions | total为份数整数；questions为单题统计数组 |
+| GET /api/surveys/{id}/questions/{qid}/stats | 单个QuestionStatsOut | 与整卷questions元素相同，不再包装questions或total |
+
+管理问卷的公共部分 SurveySummaryOut 为：id、ownerId、token、title、description、deadline、allowAnonymous、allowMultiple、status、editRevision、definitionVersion、schemaVersion、createdAt、updatedAt。SurveyOut在此基础上增加questions。deadline为null表示不限；status为draft/published/closed；description为空时返回空字符串。
+
+题目结构为id、kind、title、required、options、validation、jumpRules。kind为single/multiple/text/number；无选项或规则时返回[]。选项含id和label。validation始终包含minChoices、maxChoices、minLength、maxLength、minimum、maximum、integer；未设置的上下限返回null，integer返回布尔值。minimum和maximum非空时是十进制字符串。规则含conditions和target；条件含op和value，value为字符串或字符串数组，target为稳定题目标识或END。完整约束以模型为准。
+
+| 单题kind | 公共字段之外必定返回 | 不返回或为空 |
+| --- | --- | --- |
+| single、multiple | options数组，各项id、label、count | 不返回contents、average或分页字段；零次选项仍返回count=0 |
+| text | contents、skip、limit、hasMore | 无回答contents=[]；不返回options或average |
+| number | 同text，另有average | 无有效数值average=null；否则十进制字符串；不返回options |
+
+单题公共字段为questionId、title、kind、answered。contents每项仅含value、author、submittedAt；value为文本或数字字符串；author为用户名或“匿名”，不携带内部账号标识。分页的skip、limit为整数，hasMore为布尔值；整卷每题默认返回第一页20项，下一页调用单题接口。统计计数的业务口径只在[需求与设计](需求与设计.md)维护。
+
+业务错误的detail为字符串；请求结构校验错误为detail数组，每项loc是字符串或整数数组、msg为字符串，不返回input。统一错误模型为ErrorOut，路由登记401/403/404/409/413/422结构，不表示每个路径都会产生所有状态。前端不应假定detail只有一种类型。
+
+## 前端字段核对
+
+对照[页面脚本](../app/static/app.js)逐项检查，当前字段匹配；覆盖自动检查见[测试记录](测试记录.md)T19。本表说明消费位置及容易破坏的约定，不重复维护字段类型。
+
+| 消费位置 | 使用的输出 | 需要保持的约定 |
+| --- | --- | --- |
+| api、boot、account | ErrorOut、SessionOut | 错误兼容字符串和数组；user先判断null；csrf用于后续写请求 |
+| list、renderEditor、collect、save | SurveySummaryOut、SurveyOut及嵌套题目 | 列表不读questions；编辑只使用完整问卷；写操作后使用返回的最新版本；选择题options及规则数组始终存在 |
+| startFill、renderFill、constraintText、answerText | FillOut或PreviewOut.survey、Question | 两种survey共同部分可用于渲染，预览不得读取deadline或definitionVersion；validation未设值用null默认处理 |
+| nextAnswer、revise | WalkOut或PreviewOut.walk | preview多一层walk包装；nextQuestionId=null进入确认，path用于返回修改；不将ready当成保存成功 |
+| submit-answer | SubmitOut | 当前页面只依据HTTP成功展示提交成功，不读取message或responseId；这些字段仍供调用者和重试使用 |
+| statistics、contents、content-page | StatsOut及按kind区分的QuestionStatsOut | 选择题依赖存在options；其他题依赖contents与分页；仅数字显示average；单题分页响应不带外层questions |
+
+响应模型的校验和OpenAPI机制见[FastAPI官方说明](https://fastapi.tiangolo.com/tutorial/response-model/)。直接构造JSONResponse的账号接口也显式通过输出模型，再设置Cookie；其余接口通过response_model验证和过滤。

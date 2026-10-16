@@ -15,6 +15,8 @@ from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from starlette.concurrency import run_in_threadpool
 
+from .contracts import (MessageOut, SessionOut, LoginOut, SurveySummaryOut, SurveyOut,
+                        FillOut, WalkOut, PreviewOut, SubmitOut, StatsOut, QuestionStatsOut, ErrorOut)
 from .database import connect, initialize, now, public
 from .logic import deadline, fail, prepare_survey, validate_definition, walk
 from .models import Credentials, MetadataUpdate, Revision, Submission, SurveyInput, SurveyUpdate, WalkInput
@@ -98,7 +100,8 @@ def create_app(database=None):
         if client:
             client.close()
 
-    app = FastAPI(title="MongoDB 问卷系统", version="1.0.0", lifespan=lifespan)
+    app = FastAPI(title="MongoDB 问卷系统", version="1.0.0", lifespan=lifespan,
+                  responses={code: {"model": ErrorOut} for code in (401, 403, 404, 409, 413, 422)})
     app.mount("/static", StaticFiles(directory=str(ROOT / "static")), name="static")
 
     @app.exception_handler(RequestValidationError)
@@ -131,7 +134,7 @@ def create_app(database=None):
     def page(request: Request, token: str = ""):
         return templates.TemplateResponse(request=request, name="index.html", context={"token": token})
 
-    @app.get("/api/session", tags=["账号"])
+    @app.get("/api/session", tags=["账号"], response_model=SessionOut)
     def session(request: Request):
         csrf = request.cookies.get("survey_csrf") or secrets.token_urlsafe(32)
         try:
@@ -142,11 +145,11 @@ def create_app(database=None):
             if not isinstance(exc, HTTPException) or exc.status_code != 401:
                 raise
             data = None
-        response = JSONResponse({"user": data, "csrf": csrf})
+        response = JSONResponse(SessionOut(user=data, csrf=csrf).model_dump(mode="json"))
         response.set_cookie("survey_csrf", csrf, httponly=True, samesite="lax", secure=COOKIE_SECURE)
         return response
 
-    @app.post("/api/register", status_code=201, tags=["账号"])
+    @app.post("/api/register", status_code=201, tags=["账号"], response_model=MessageOut)
     def register(body: Credentials, request: Request):
         display, key = username(body.username)
         try:
@@ -156,7 +159,7 @@ def create_app(database=None):
             fail("用户名已存在", 409)
         return {"message": "注册成功，请登录"}
 
-    @app.post("/api/login", tags=["账号"])
+    @app.post("/api/login", tags=["账号"], response_model=LoginOut)
     def login(body: Credentials, request: Request):
         _, key = username(body.username)
         db = request.app.state.db
@@ -167,33 +170,33 @@ def create_app(database=None):
         if old:
             db.sessions.delete_one({"tokenHash": digest(old)})
         token = create_session(db, user["_id"])
-        response = JSONResponse({"username": user["username"]})
+        response = JSONResponse(LoginOut(username=user["username"]).model_dump(mode="json"))
         response.set_cookie("survey_session", token, httponly=True, max_age=43200, samesite="lax", secure=COOKIE_SECURE)
         return response
 
-    @app.post("/api/logout", tags=["账号"])
+    @app.post("/api/logout", tags=["账号"], response_model=MessageOut)
     def logout(request: Request):
         request.app.state.db.sessions.delete_one({"tokenHash": digest(request.cookies.get("survey_session", ""))})
-        response = JSONResponse({"message": "已退出登录"})
+        response = JSONResponse(MessageOut(message="已退出登录").model_dump(mode="json"))
         response.delete_cookie("survey_session")
         return response
 
-    @app.get("/api/surveys", tags=["问卷管理"])
+    @app.get("/api/surveys", tags=["问卷管理"], response_model=list[SurveySummaryOut])
     def surveys(request: Request, user=Depends(current_user), skip: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=100)):
         return public(list(request.app.state.db.surveys.find({"ownerId": user["_id"]}, {"questions": 0}).sort([("createdAt", -1), ("_id", -1)]).skip(skip).limit(limit)))
 
-    @app.post("/api/surveys", status_code=201, tags=["问卷管理"])
+    @app.post("/api/surveys", status_code=201, tags=["问卷管理"], response_model=SurveyOut)
     def create(body: SurveyInput, request: Request, user=Depends(current_user)):
         survey = {**prepare_survey(body), "ownerId": user["_id"], "token": secrets.token_urlsafe(18), "status": "draft",
                   "editRevision": 1, "definitionVersion": 1, "schemaVersion": 1, "createdAt": now(), "updatedAt": now()}
         request.app.state.db.surveys.insert_one(survey)
         return public(survey)
 
-    @app.get("/api/surveys/{survey_id}", tags=["问卷管理"])
+    @app.get("/api/surveys/{survey_id}", tags=["问卷管理"], response_model=SurveyOut)
     def get_survey(survey_id: str, request: Request, user=Depends(current_user)):
         return public(owned(request.app.state.db, survey_id, user))
 
-    @app.put("/api/surveys/{survey_id}", tags=["问卷管理"])
+    @app.put("/api/surveys/{survey_id}", tags=["问卷管理"], response_model=SurveyOut)
     def update(survey_id: str, body: SurveyUpdate, request: Request, user=Depends(current_user)):
         db = request.app.state.db
         survey = owned(db, survey_id, user)
@@ -201,7 +204,7 @@ def create_app(database=None):
             fail("已发布问卷的题目与设置已冻结，请使用基本信息接口", 409)
         return mutate(db, survey, user, body.editRevision, prepare_survey(body), "draft")
 
-    @app.patch("/api/surveys/{survey_id}/metadata", tags=["问卷管理"])
+    @app.patch("/api/surveys/{survey_id}/metadata", tags=["问卷管理"], response_model=SurveyOut)
     def metadata(survey_id: str, body: MetadataUpdate, request: Request, user=Depends(current_user)):
         db = request.app.state.db
         survey = owned(db, survey_id, user)
@@ -210,7 +213,7 @@ def create_app(database=None):
             fail("问卷标题不能为空")
         return mutate(db, survey, user, body.editRevision, {"title": title, "description": body.description, "deadline": deadline(body.deadline)})
 
-    @app.post("/api/surveys/{survey_id}/publish", tags=["问卷管理"])
+    @app.post("/api/surveys/{survey_id}/publish", tags=["问卷管理"], response_model=SurveyOut)
     def publish(survey_id: str, body: Revision, request: Request, user=Depends(current_user)):
         db = request.app.state.db
         survey = owned(db, survey_id, user)
@@ -219,31 +222,31 @@ def create_app(database=None):
             fail("发布时截止时间应在未来")
         return mutate(db, survey, user, body.editRevision, {"status": "published"}, "draft")
 
-    @app.post("/api/surveys/{survey_id}/close", tags=["问卷管理"])
+    @app.post("/api/surveys/{survey_id}/close", tags=["问卷管理"], response_model=SurveyOut)
     def close(survey_id: str, body: Revision, request: Request, user=Depends(current_user)):
         db = request.app.state.db
         return mutate(db, owned(db, survey_id, user), user, body.editRevision, {"status": "closed"}, "published")
 
-    @app.get("/api/fill/{token}", tags=["填写"])
+    @app.get("/api/fill/{token}", tags=["填写"], response_model=FillOut)
     def fill(token: str, request: Request, user=Depends(current_user)):
         db = request.app.state.db
         survey = accessible(db, token)
         ensure_available(db, survey, user)
         return public({k: survey[k] for k in ("title", "description", "deadline", "questions", "allowAnonymous", "allowMultiple", "definitionVersion")})
 
-    @app.post("/api/fill/{token}/walk", tags=["填写"])
+    @app.post("/api/fill/{token}/walk", tags=["填写"], response_model=WalkOut)
     def traverse(token: str, body: WalkInput, request: Request, user=Depends(current_user)):
         survey = accessible(request.app.state.db, token)
         return walk(survey, body.answers)[0]
 
-    @app.post("/api/surveys/{survey_id}/preview", tags=["问卷管理"])
+    @app.post("/api/surveys/{survey_id}/preview", tags=["问卷管理"], response_model=PreviewOut)
     def preview(survey_id: str, body: WalkInput, request: Request, user=Depends(current_user)):
         survey = owned(request.app.state.db, survey_id, user)
         validate_definition(survey, publishing=True)
         return {"survey": public({k: survey[k] for k in ("title", "description", "questions", "allowAnonymous", "allowMultiple")}),
                 "walk": walk(survey, body.answers)[0]}
 
-    @app.post("/api/fill/{token}/submit", tags=["填写"])
+    @app.post("/api/fill/{token}/submit", tags=["填写"], response_model=SubmitOut)
     def submit(token: str, body: Submission, request: Request, user=Depends(current_user)):
         db = request.app.state.db
         survey = db.surveys.find_one({"token": token})
@@ -276,14 +279,14 @@ def create_app(database=None):
             fail("此问卷每个账号只能提交一次", 409)
         return {"message": "提交成功", "responseId": str(response["_id"]), "replayed": False}
 
-    @app.get("/api/surveys/{survey_id}/stats", tags=["统计"])
+    @app.get("/api/surveys/{survey_id}/stats", tags=["统计"], response_model=StatsOut)
     def stats(survey_id: str, request: Request, user=Depends(current_user)):
         db = request.app.state.db
         survey = owned(db, survey_id, user)
         return {"total": db.responses.count_documents({"surveyId": survey["_id"]}),
                 "questions": [question_stats(db, survey, q) for q in survey["questions"]]}
 
-    @app.get("/api/surveys/{survey_id}/questions/{question_id}/stats", tags=["统计"])
+    @app.get("/api/surveys/{survey_id}/questions/{question_id}/stats", tags=["统计"], response_model=QuestionStatsOut)
     def one_stat(survey_id: str, question_id: str, request: Request, user=Depends(current_user),
                  skip: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=100)):
         db = request.app.state.db
