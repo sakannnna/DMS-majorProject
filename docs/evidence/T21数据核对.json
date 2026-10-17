@@ -1,0 +1,50 @@
+{
+  "version": "6ec8575",
+  "beforeExplicitSubmit": 0,
+  "stalePathStatus": 422,
+  "afterRejectedStalePath": 0,
+  "savedRules": {
+    "q1": [
+      {
+        "conditions": [
+          {
+            "op": "any",
+            "value": [
+              "a"
+            ]
+          }
+        ],
+        "target": "q3"
+      }
+    ],
+    "q3": [
+      {
+        "conditions": [
+          {
+            "op": "gte",
+            "value": "18"
+          }
+        ],
+        "target": "END"
+      }
+    ]
+  },
+  "afterExplicitSubmit": 1,
+  "answers": [
+    {
+      "questionId": "q1",
+      "value": [
+        "a"
+      ]
+    },
+    {
+      "questionId": "q3",
+      "value": "20",
+      "bsonType": "Decimal128"
+    }
+  ],
+  "absentQuestionIds": [
+    "q2",
+    "q4"
+  ]
+}
