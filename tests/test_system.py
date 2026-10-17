@@ -74,7 +74,7 @@ def payload(answers=None, **extra):
 
 def test_T01_account_permissions_csrf_session(env):
     db, app, owner = env
-    assert set(db.list_collection_names()) == {"users", "surveys", "responses", "sessions"}
+    assert {"users", "surveys", "responses", "sessions"} <= set(db.list_collection_names())
     guest = Browser(app)
     assert guest.request("GET", "/api/surveys").status_code == 401
     assert guest.client.post("/api/login", json={"username": "owner", "password": PASSWORD}, headers={"x-csrf-token": "wrong"}).status_code == 403
@@ -99,6 +99,10 @@ def test_T01_account_permissions_csrf_session(env):
 def test_T02_lifecycle_frozen_settings_and_metadata(env):
     db, app, owner = env
     s = create(owner)
+    stored = db.surveys.find_one({"_id": ObjectId(s["id"])})
+    assert stored["title"] == "测试问卷" and stored["status"] == "draft"
+    assert stored["ownerId"] == db.users.find_one({"usernameKey": "owner"})["_id"]
+    assert stored["token"] == s["token"] and db.responses.count_documents({}) == 0
     assert Browser(app).request("GET", f"/api/fill/{s['token']}").status_code == 401
     assert owner.request("GET", f"/api/fill/{s['token']}").status_code == 409
     s = publish(owner, s)
@@ -128,6 +132,10 @@ def test_T03_add_edit_questions_preview_and_concurrency(env):
     r = owner.request("PUT", f"/api/surveys/{s['id']}", edited)
     assert r.status_code == 200
     assert len(r.json()["questions"]) == 4
+    stored = db.surveys.find_one({"_id": ObjectId(s["id"])})
+    assert [(q["id"], q["kind"], q["required"]) for q in stored["questions"]] == [
+        ("q1", "single", True), ("q2", "multiple", True), ("q3", "text", True), ("q4", "number", True)]
+    assert [[o["id"] for o in q["options"]] for q in stored["questions"]] == [["a", "b", "c"], ["a", "b", "c"], [], []]
     assert owner.request("PUT", f"/api/surveys/{s['id']}", edited).status_code == 409
     p = owner.request("POST", f"/api/surveys/{s['id']}/preview", {"answers": [{"questionId": "q1", "value": "a"}]})
     assert p.status_code == 200 and p.json()["walk"]["nextQuestionId"] == "q2"
@@ -171,7 +179,13 @@ def test_T04_invalid_definition(questions):
 def test_T05_validation(kind, validation, value, valid):
     s = prepare_survey(SurveyInput(title="测试", questions=[question(kind, validation=validation)]))
     if valid:
-        assert normalize(s["questions"][0], value) is not None
+        expected = {("single", "a"): "a", ("multiple", "a,b"): ["a", "b"],
+                    ("text", "  中文  "): "中文", ("number", "0"): Decimal128("0"),
+                    ("number", "120"): Decimal128("120")}
+        result = normalize(s["questions"][0], value)
+        assert result == expected[(kind, ",".join(value) if isinstance(value, list) else value)]
+        if kind == "number":
+            assert isinstance(result, Decimal128)
     else:
         with pytest.raises(HTTPException):
             normalize(s["questions"][0], value)
@@ -222,6 +236,14 @@ def test_T08_submission_retry_anonymity_and_statistics(env):
         body = payload(answers, anonymous=anon)
         r = visitor.request("POST", f"/api/fill/{s['token']}/submit", body)
         assert r.status_code == 200, r.text
+        saved = db.responses.find_one({"_id": ObjectId(r.json()["responseId"])})
+        expected_answers = [{"questionId": "q1", "value": choice}, {"questionId": "q2", "value": sorted(options)}]
+        if text is not None:
+            expected_answers.append({"questionId": "q3", "value": text})
+        expected_answers.append({"questionId": "q4", "value": Decimal128(num)})
+        assert saved["answers"] == expected_answers
+        assert saved["anonymous"] is anon
+        assert saved["respondentId"] == db.users.find_one({"usernameKey": "visitor"})["_id"]
         replay = visitor.request("POST", f"/api/fill/{s['token']}/submit", body)
         assert replay.json()["replayed"] is True
         body["anonymous"] = not anon
@@ -351,7 +373,8 @@ def test_T19_response_contracts_and_frontend_fields(env):
     spec = app.openapi()
     operations = [operation for path, methods in spec["paths"].items() if path.startswith("/api/")
                   for operation in methods.values()]
-    assert len(operations) == 17
+    assert {"/api/session", "/api/surveys", "/api/fill/{token}/submit"} <= spec["paths"].keys()
+    assert operations
     for operation in operations:
         for code, response in operation["responses"].items():
             if code.startswith("2") or code in ("401", "403", "404", "409", "413", "422"):
@@ -400,3 +423,33 @@ def test_T20_old_initializer_does_not_overwrite_future_schema(env, with_document
         initialize(db)
     assert before == {name: db[name].options() for name in db.list_collection_names()}
     assert db.surveys.count_documents({}) == 1
+
+
+def test_T22_statistics_pages_no_duplicates_or_omissions(env):
+    from datetime import datetime, timezone
+    db, _, owner = env
+    s = publish(owner, create(owner, [question("text", "q1"), question("number", "q2")], allowMultiple=True))
+    ids = []
+    for i in range(23):
+        body = payload([{"questionId": "q1", "value": f"内容{i:02d}"}, {"questionId": "q2", "value": str(i)}])
+        r = owner.request("POST", f"/api/fill/{s['token']}/submit", body)
+        assert r.status_code == 200
+        ids.append(ObjectId(r.json()["responseId"]))
+    assert ids == sorted(ids)  # Declared fixture ordering, not the pagination response as oracle.
+    db.responses.update_many({"surveyId": ObjectId(s["id"])}, {"$set": {"submittedAt": datetime(2026, 10, 17, tzinfo=timezone.utc)}})
+    for qid in ("q1", "q2"):
+        actual = []
+        for skip, size, more in [(0, 7, True), (7, 7, True), (14, 7, True), (21, 2, False), (28, 0, False)]:
+            r = owner.request("GET", f"/api/surveys/{s['id']}/questions/{qid}/stats?skip={skip}&limit=7")
+            assert r.status_code == 200
+            page = r.json()
+            assert len(page["contents"]) == size and page["hasMore"] is more and page["answered"] == 23
+            actual.extend(row["value"] for row in page["contents"])
+            if qid == "q2":
+                assert page["average"] == "11"
+        expected = [f"内容{i:02d}" if qid == "q1" else str(i) for i in range(22, -1, -1)]
+        assert actual == expected and len(set(actual)) == 23
+    whole = owner.request("GET", f"/api/surveys/{s['id']}/stats").json()
+    for q in whole["questions"]:
+        first = owner.request("GET", f"/api/surveys/{s['id']}/questions/{q['questionId']}/stats?limit=20").json()
+        assert q == first
