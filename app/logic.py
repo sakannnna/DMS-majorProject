@@ -46,7 +46,7 @@ def prepare_survey(model):
     for q in data["questions"]:
         q["title"] = q["title"].strip()
         q["options"] = [{**o, "label": o["label"].strip()} for o in q["options"]]
-        q["validation"] = {k: Decimal128(x) if isinstance(x, Decimal) else x for k, x in q["validation"].items()}
+        q["validation"] = {k: Decimal128(number(x)) if isinstance(x, Decimal) else x for k, x in q["validation"].items()}
     validate_definition(data)
     if len(BSON.encode(data)) > 2_000_000:
         fail("问卷定义超过 2 MB 限制")

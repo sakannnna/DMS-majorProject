@@ -80,12 +80,14 @@ class SubmitOut(MessageOut):
 
 class OptionCountOut(Option):
     count: int
+    respondentCount: int
 
 
 class StatsBase(Output):
     questionId: str
     title: str
     answered: int
+    respondentCount: int
 
 
 class ChoiceStatsOut(StatsBase):
@@ -117,6 +119,7 @@ QuestionStatsOut = Annotated[ChoiceStatsOut | TextStatsOut | NumberStatsOut, Fie
 
 class StatsOut(Output):
     total: int
+    respondentCount: int
     questions: list[QuestionStatsOut]
 
 

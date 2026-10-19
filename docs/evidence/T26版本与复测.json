@@ -1,0 +1,67 @@
+{
+  "date": "2026-10-19",
+  "baseCommit": "0359036",
+  "logicSha256": "20d9d0de60af7e19630cd4b5ad45ca34b2cb56471ac68d3d2ca0dc752b2c25df",
+  "testsSha256": "07fe11fd0d0f94a50086243fdf1192a9a9ef859b5b2d932e8a176d376771ea98",
+  "before": {
+    "failed": 12,
+    "passed": 8
+  },
+  "targetedAfter": {
+    "passed": 20,
+    "seconds": 5.34
+  },
+  "fullRegression": {
+    "passed": 73,
+    "seconds": 22.04
+  },
+  "regressionCaseReports": {
+    "T23-smoke": {
+      "case": "T23-smoke",
+      "database": "survey_course_test_d3e22aef33144cfe813d4ad3eb82fed8",
+      "passed": true,
+      "requestFailures": [],
+      "baseCommit": "0359036bd95fce0137f162cde998db93d25c1b79",
+      "testSourceSha256": "07fe11fd0d0f94a50086243fdf1192a9a9ef859b5b2d932e8a176d376771ea98",
+      "timingScope": "test body; excludes env fixture setup and cleanup; seconds",
+      "storedResponses": 1,
+      "sameKeyReplayAdded": 0,
+      "closedSubmitStatus": 409,
+      "elapsedSeconds": 0.354
+    },
+    "T24-correctness": {
+      "case": "T24-correctness",
+      "database": "survey_course_test_b9db1754a1d94bbd95b6a4bff5e7f300",
+      "passed": true,
+      "requestFailures": [],
+      "baseCommit": "0359036bd95fce0137f162cde998db93d25c1b79",
+      "testSourceSha256": "07fe11fd0d0f94a50086243fdf1192a9a9ef859b5b2d932e8a176d376771ea98",
+      "timingScope": "test body; excludes env fixture setup and cleanup; seconds",
+      "preparationSeconds": 9.41,
+      "submitAndRetrySeconds": 0.951,
+      "accounts": 100,
+      "workerLimit": 10,
+      "observedPeakActiveWorkers": 10,
+      "firstSuccessful": 100,
+      "retrySuccessful": 100,
+      "storedResponses": 100,
+      "uniqueRespondents": 100,
+      "sameKeyReplayAdded": 0,
+      "accountAnswerMapping": "exact match",
+      "statistics": {
+        "single": [
+          50,
+          50,
+          0
+        ],
+        "multiple": [
+          50,
+          75,
+          25
+        ],
+        "average": "49.5"
+      },
+      "elapsedSeconds": 10.443
+    }
+  }
+}

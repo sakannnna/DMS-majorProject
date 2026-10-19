@@ -1,4 +1,4 @@
-param([string]$Mongod = 'D:\MongoDB\Server\bin\mongod.exe')
+﻿param([string]$Mongod = 'D:\MongoDB\Server\bin\mongod.exe')
 $ErrorActionPreference = 'Stop'
 $projectRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $dataRoot = Join-Path $projectRoot '.local\mongo'

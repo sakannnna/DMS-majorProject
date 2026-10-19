@@ -1,0 +1,81 @@
+{
+  "date": "2026-10-19",
+  "baseCommit": "0359036bd95fce0137f162cde998db93d25c1b79",
+  "sourceSha256": {
+    "app/main.py": "1014b4b0fc31e80e78aa81a42fee1245c2043167076e8ef41a21ae7b75427fd2",
+    "app/contracts.py": "06194bd216f835464a80a7da7c8b7b417a8ea01054abc72edf19a86c654b1cc5",
+    "app/static/app.js": "64b8e1473f01b3a14dc9319ab6b51dbeba07cc3f202c4934686c68929b6130f9",
+    "tests/test_system.py": "b651e8c346063e7c3a1e5c5984d9574b6434ed5d762ddf2442d4482da35e9df3"
+  },
+  "fullRegression": {
+    "passed": 74,
+    "seconds": 19.79,
+    "warnings": 1
+  },
+  "browser": {
+    "database": "survey_course_test_9d72462589c040a3adb80c9e64c7f69d",
+    "url": "http://127.0.0.1:8010/",
+    "fixture": "reuse test_T27_submission_counts_and_distinct_accounts",
+    "operations": "owner login, open main survey statistics; observe all four questions",
+    "observed": {
+      "total": 4,
+      "respondentCount": 2,
+      "numberAverage": "20"
+    },
+    "screenshot": "T27-statistics.png"
+  },
+  "regressionCaseReports": {
+    "T23-smoke": {
+      "case": "T23-smoke",
+      "database": "survey_course_test_8c0d85281c9440d58ae50281a514927a",
+      "passed": true,
+      "requestFailures": [],
+      "baseCommit": "0359036bd95fce0137f162cde998db93d25c1b79",
+      "testSourceSha256": "b651e8c346063e7c3a1e5c5984d9574b6434ed5d762ddf2442d4482da35e9df3",
+      "timingScope": "test body; excludes env fixture setup and cleanup; seconds",
+      "storedResponses": 1,
+      "sameKeyReplayAdded": 0,
+      "closedSubmitStatus": 409,
+      "elapsedSeconds": 0.321
+    },
+    "T24-correctness": {
+      "case": "T24-correctness",
+      "database": "survey_course_test_36fe6c90f39843c4b096ce583bf35d5d",
+      "passed": true,
+      "requestFailures": [],
+      "baseCommit": "0359036bd95fce0137f162cde998db93d25c1b79",
+      "testSourceSha256": "b651e8c346063e7c3a1e5c5984d9574b6434ed5d762ddf2442d4482da35e9df3",
+      "timingScope": "test body; excludes env fixture setup and cleanup; seconds",
+      "preparationSeconds": 7.116,
+      "submitAndRetrySeconds": 0.739,
+      "accounts": 100,
+      "workerLimit": 10,
+      "observedPeakActiveWorkers": 10,
+      "firstSuccessful": 100,
+      "retrySuccessful": 100,
+      "storedResponses": 100,
+      "uniqueRespondents": 100,
+      "sameKeyReplayAdded": 0,
+      "accountAnswerMapping": "exact match",
+      "statistics": {
+        "single": [
+          50,
+          50,
+          0
+        ],
+        "multiple": [
+          50,
+          75,
+          25
+        ],
+        "average": "49.5"
+      },
+      "elapsedSeconds": 7.948
+    }
+  },
+  "targeted": {
+    "passed": 5,
+    "deselected": 69,
+    "seconds": 2.69
+  }
+}

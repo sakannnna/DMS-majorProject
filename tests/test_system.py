@@ -1,6 +1,13 @@
 """Real MongoDB integration tests. All test databases are generated and isolated."""
 import os
 import uuid
+import hashlib
+import json
+import subprocess
+import time
+import threading
+from contextlib import contextmanager
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 
@@ -252,9 +259,13 @@ def test_T08_submission_retry_anonymity_and_statistics(env):
     assert all(isinstance(r["answers"][-1]["value"], Decimal128) for r in db.responses.find({}))
     stats = owner.request("GET", f"/api/surveys/{s['id']}/stats").json()
     assert stats["total"] == 3
+    assert stats["respondentCount"] == 1
+    assert all(q["respondentCount"] == 1 for q in stats["questions"])
     a, b, c, d = stats["questions"]
     assert [o["count"] for o in a["options"]] == [2, 1, 0]
     assert [o["count"] for o in b["options"]] == [2, 2, 0]
+    assert [o["respondentCount"] for o in a["options"]] == [1, 1, 0]
+    assert [o["respondentCount"] for o in b["options"]] == [1, 1, 0]
     assert c["answered"] == 2 and d["average"] == "0.2"
     assert {r["author"] for r in c["contents"]} == {"匿名"}
     assert {r["author"] for r in d["contents"]} == {"匿名", "visitor"}
@@ -293,6 +304,7 @@ def test_T10_empty_stats_no_anonymous_and_schema(env):
     s = publish(owner, create(owner, [question("number")], allowAnonymous=False))
     data = owner.request("GET", f"/api/surveys/{s['id']}/stats").json()
     assert data["total"] == 0 and data["questions"][0]["average"] is None
+    assert data["respondentCount"] == data["questions"][0]["respondentCount"] == 0
     assert owner.request("POST", f"/api/fill/{s['token']}/submit", payload([{ "questionId": "q1", "value": "0"}], anonymous=True)).status_code == 200
     assert db.responses.find_one({})["anonymous"] is False
     with pytest.raises(WriteError):
@@ -364,6 +376,8 @@ def test_T18_skipped_required_question_and_stats(env):
     assert stats["total"] == 1
     assert stats["questions"][0]["answered"] == 1
     assert stats["questions"][1]["answered"] == 0 and stats["questions"][1]["average"] is None
+    assert stats["respondentCount"] == stats["questions"][0]["respondentCount"] == 1
+    assert stats["questions"][1]["respondentCount"] == 0
 
 
 def test_T19_response_contracts_and_frontend_fields(env):
@@ -403,6 +417,12 @@ def test_T19_response_contracts_and_frontend_fields(env):
         else:
             assert {"contents", "skip", "limit", "hasMore"} <= item.keys() and "options" not in item
     assert stats["questions"][-1]["average"] is None
+    assert stats["respondentCount"] == 0
+    for item in stats["questions"]:
+        broken_count = dict(item)
+        broken_count.pop("respondentCount")
+        with pytest.raises(ValidationError):
+            adapter.validate_python(broken_count)
     broken = dict(stats["questions"][-1]); broken.pop("average")
     with pytest.raises(ValidationError):
         adapter.validate_python(broken)
@@ -453,3 +473,254 @@ def test_T22_statistics_pages_no_duplicates_or_omissions(env):
     for q in whole["questions"]:
         first = owner.request("GET", f"/api/surveys/{s['id']}/questions/{q['questionId']}/stats?limit=20").json()
         assert q == first
+
+
+@contextmanager
+def measured_case(name, db):
+    """Write bounded evidence even when a request or an assertion fails."""
+    started = time.perf_counter()
+    report = {"case": name, "database": db.name, "passed": False, "requestFailures": [],
+              "baseCommit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+              "testSourceSha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+              "timingScope": "test body; excludes env fixture setup and cleanup; seconds"}
+    try:
+        yield report
+        report["passed"] = True
+    except BaseException as exc:
+        report["failure"] = f"{type(exc).__name__}: {exc}"
+        raise
+    finally:
+        report["elapsedSeconds"] = round(time.perf_counter() - started, 3)
+        target = Path(__file__).resolve().parents[1] / "docs" / "evidence" / f"{name}.json"
+        target.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def test_T23_complete_flow_smoke(env):
+    db, app, owner = env
+    with measured_case("T23-smoke", db) as evidence:
+        assert owner.client.get("/").status_code == 200
+        assert owner.client.get("/static/app.js").status_code == 200
+        s = publish(owner, create(owner, [
+            question(jumpRules=[{"conditions": [{"op": "eq", "value": "a"}], "target": "END"}]),
+            question("multiple", "q2"), question("text", "q3"), question("number", "q4")]))
+        reader = Browser(app).account("smoke_reader")
+        try:
+            assert reader.request("GET", f"/api/fill/{s['token']}").status_code == 200
+            answers = [{"questionId": "q1", "value": "b"}, {"questionId": "q2", "value": ["a", "b"]},
+                       {"questionId": "q3", "value": "  冒烟回答  "}, {"questionId": "q4", "value": "12"}]
+            for n, next_id in [(1, "q2"), (2, "q3"), (3, "q4"), (4, None)]:
+                r = reader.request("POST", f"/api/fill/{s['token']}/walk", {"answers": answers[:n]})
+                assert r.status_code == 200
+                assert r.json()["nextQuestionId"] == next_id and r.json()["ready"] is (n == 4)
+            assert db.responses.count_documents({}) == 0
+            body = payload(answers, anonymous=False)
+            first = reader.request("POST", f"/api/fill/{s['token']}/submit", body)
+            retry = reader.request("POST", f"/api/fill/{s['token']}/submit", body)
+            assert first.status_code == retry.status_code == 200
+            assert first.json()["responseId"] == retry.json()["responseId"] and retry.json()["replayed"]
+            assert db.responses.count_documents({}) == 1
+            assert db.responses.find_one({})["answers"] == [answers[0], answers[1],
+                {"questionId": "q3", "value": "冒烟回答"}, {"questionId": "q4", "value": Decimal128("12")}]
+            r = owner.request("GET", f"/api/surveys/{s['id']}/stats")
+            assert r.status_code == 200
+            stats = r.json()
+            assert stats["total"] == 1
+            assert [o["count"] for o in stats["questions"][0]["options"]] == [0, 1, 0]
+            assert [o["count"] for o in stats["questions"][1]["options"]] == [1, 1, 0]
+            assert stats["questions"][2]["contents"][0]["value"] == "冒烟回答"
+            assert stats["questions"][3]["average"] == "12"
+            assert owner.request("POST", f"/api/surveys/{s['id']}/close", {"editRevision": s["editRevision"]}).status_code == 200
+            assert reader.request("POST", f"/api/fill/{s['token']}/submit", payload(answers)).status_code == 409
+            assert db.responses.count_documents({}) == 1
+            evidence.update({"storedResponses": 1, "sameKeyReplayAdded": 0, "closedSubmitStatus": 409})
+        finally:
+            reader.client.close()
+
+
+def test_T24_hundred_accounts_submission_correctness(env):
+    db, app, owner = env
+    clients = []
+    try:
+        with measured_case("T24-correctness", db) as evidence:
+            preparation = time.perf_counter()
+            s = publish(owner, create(owner, [question(), question("multiple", "q2"),
+                question("text", "q3"), question("number", "q4")]))
+            expected = {}
+            for i in range(100):
+                name = f"batch{i:03d}"
+                browser = Browser(app).account(name)
+                clients.append(browser)
+                answers = [{"questionId": "q1", "value": "a" if i % 2 == 0 else "b"},
+                           {"questionId": "q2", "value": [["a"], ["b"], ["a", "b"], ["b", "c"]][i % 4]},
+                           {"questionId": "q3", "value": f"account-{i:03d}"},
+                           {"questionId": "q4", "value": str(i)}]
+                expected[name] = answers
+            evidence["preparationSeconds"] = round(time.perf_counter() - preparation, 3)
+            active, peak = 0, 0
+            lock = threading.Lock()
+            def send(i):
+                nonlocal active, peak
+                with lock:
+                    active += 1
+                    peak = max(peak, active)
+                result = {"account": f"batch{i:03d}"}
+                try:
+                    body = payload(expected[result["account"]], anonymous=False)
+                    for stage in ("first", "retry"):
+                        r = clients[i].request("POST", f"/api/fill/{s['token']}/submit", body)
+                        result[stage] = {"status": r.status_code, "body": r.json()}
+                except Exception as exc:
+                    result["exception"] = f"{type(exc).__name__}: {exc}"
+                finally:
+                    with lock:
+                        active -= 1
+                return result
+            workload = time.perf_counter()
+            with ThreadPoolExecutor(max_workers=10) as pool:
+                results = list(pool.map(send, range(100)))
+            evidence.update({"submitAndRetrySeconds": round(time.perf_counter() - workload, 3),
+                "accounts": 100, "workerLimit": 10, "observedPeakActiveWorkers": peak,
+                "requestFailures": [r for r in results if "exception" in r or
+                    any(r.get(k, {}).get("status") != 200 for k in ("first", "retry"))]})
+            assert not evidence["requestFailures"], evidence["requestFailures"]
+            assert all(not r["first"]["body"]["replayed"] and r["retry"]["body"]["replayed"] and
+                       r["first"]["body"]["responseId"] == r["retry"]["body"]["responseId"] for r in results)
+            rows = list(db.responses.find({"surveyId": ObjectId(s["id"])}))
+            users = {u["username"]: u["_id"] for u in db.users.find({"username": {"$in": list(expected)}})}
+            assert len(rows) == len(users) == 100
+            assert {r["respondentId"] for r in rows} == set(users.values())
+            by_user = {r["respondentId"]: r for r in rows}
+            for name, inputs in expected.items():
+                stored = by_user[users[name]]
+                assert stored["answers"] == inputs[:3] + [{"questionId": "q4", "value": Decimal128(inputs[3]["value"])}]
+                assert stored["anonymous"] is False and stored["singleSubmissionKey"] == users[name]
+            stats = owner.request("GET", f"/api/surveys/{s['id']}/stats").json()
+            assert stats["total"] == 100
+            assert all(q["answered"] == 100 for q in stats["questions"])
+            assert stats["respondentCount"] == 100
+            assert all(q["respondentCount"] == 100 for q in stats["questions"])
+            for q in stats["questions"][:2]:
+                assert all(o["respondentCount"] == o["count"] for o in q["options"])
+            assert [o["count"] for o in stats["questions"][0]["options"]] == [50, 50, 0]
+            assert [o["count"] for o in stats["questions"][1]["options"]] == [50, 75, 25]
+            assert stats["questions"][3]["average"] == "49.5"
+            for qid, column in [("q3", 2), ("q4", 3)]:
+                r = owner.request("GET", f"/api/surveys/{s['id']}/questions/{qid}/stats?limit=100")
+                assert r.status_code == 200
+                content = r.json()
+                assert len(content["contents"]) == 100 and not content["hasMore"]
+                assert {row["author"]: row["value"] for row in content["contents"]} == {
+                    name: answers[column]["value"] for name, answers in expected.items()}
+            evidence.update({"firstSuccessful": 100, "retrySuccessful": 100, "storedResponses": 100,
+                "uniqueRespondents": 100, "sameKeyReplayAdded": 0, "accountAnswerMapping": "exact match",
+                "statistics": {"single": [50, 50, 0], "multiple": [50, 75, 25], "average": "49.5"}})
+    finally:
+        for browser in clients:
+            browser.client.close()
+
+
+@pytest.mark.parametrize("field", ["minimum", "maximum"])
+@pytest.mark.parametrize("value", ["1e6145", "1e-6177", "1.2345678901234567890123456789012345"])
+@pytest.mark.parametrize("operation", ["create", "update"])
+def test_T26_config_bounds_reject_without_writes(env, field, value, operation):
+    db, app, owner = env
+    s = create(owner, [question("number")])
+    before = db.surveys.find_one({"_id": ObjectId(s["id"])})
+    body = {"title": "invalid bounds", "questions": [question("number", validation={field: value})]}
+    path, method = "/api/surveys", "POST"
+    if operation == "update":
+        path, method = f"/api/surveys/{s['id']}", "PUT"
+        body["editRevision"] = s["editRevision"]
+    client = TestClient(app, raise_server_exceptions=False)
+    try:
+        client.cookies.update(owner.client.cookies)
+        client.headers["x-csrf-token"] = owner.client.headers["x-csrf-token"]
+        r = client.request(method, path, json=body)
+        assert r.status_code == 422, f"{field}={value} returned {r.status_code}"
+        assert "Decimal128" in r.json()["detail"]
+        assert db.surveys.count_documents({}) == 1
+        assert db.surveys.find_one({"_id": before["_id"]}) == before
+        assert db.responses.count_documents({}) == 0
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize("bounds", [
+    {"minimum": "-9.999999999999999999999999999999999e6144", "maximum": "9.999999999999999999999999999999999e6144"},
+    {"minimum": "1e-6176", "maximum": "1e-6176"},
+    {"minimum": "1.234567890123456789012345678901234"},
+    {"minimum": None, "maximum": None},
+])
+def test_T26_legal_config_bounds_exact_storage(env, bounds):
+    from decimal import Decimal
+    db, _, owner = env
+    s = create(owner, [question("number", validation=bounds)])
+    stored = db.surveys.find_one({"_id": ObjectId(s["id"])})["questions"][0]["validation"]
+    for field, value in bounds.items():
+        if value is None:
+            assert stored[field] is None
+        else:
+            assert isinstance(stored[field], Decimal128)
+            assert stored[field].to_decimal() == Decimal(value)
+
+
+@pytest.mark.parametrize("field", ["minChoices", "maxChoices", "minLength", "maxLength"])
+def test_T26_other_config_bounds_reject_huge_integer(env, field):
+    db, _, owner = env
+    kind = "multiple" if "Choices" in field else "text"
+    r = owner.request("POST", "/api/surveys", {"title": "invalid count", "questions": [question(kind, validation={field: 10**30})]})
+    assert r.status_code == 422 and db.surveys.count_documents({}) == 0
+
+
+def test_T27_submission_counts_and_distinct_accounts(env):
+    db, app, owner = env
+    s = publish(owner, create(owner, [
+        question(jumpRules=[{"conditions": [{"op": "eq", "value": "c"}], "target": "END"}]),
+        question("multiple", "q2"), question("text", "q3", required=False),
+        question("number", "q4", required=False)], allowMultiple=True, allowAnonymous=True))
+    alpha = Browser(app).account("alpha")
+    beta = Browser(app).account("beta")
+    try:
+        for reader, choice, options, text, num, anonymous in [
+            (alpha, "a", ["a", "b"], "甲", "10", True),
+            (alpha, "b", ["b"], None, "20", False),
+            (alpha, "c", None, None, None, True),
+            (beta, "a", ["b", "c"], "乙", "30", True)]:
+            answers = [{"questionId": "q1", "value": choice}]
+            if options is not None:
+                answers += [{"questionId": "q2", "value": options}, {"questionId": "q3", "value": text},
+                            {"questionId": "q4", "value": num}]
+            body = payload(answers, anonymous=anonymous)
+            first = reader.request("POST", f"/api/fill/{s['token']}/submit", body)
+            assert first.status_code == 200, first.text
+            retry = reader.request("POST", f"/api/fill/{s['token']}/submit", body)
+            assert retry.status_code == 200 and retry.json()["replayed"] is True
+            assert retry.json()["responseId"] == first.json()["responseId"]
+            saved = db.responses.find_one({"_id": ObjectId(first.json()["responseId"])})
+            assert [a["questionId"] for a in saved["answers"]] == (
+                ["q1"] if choice == "c" else ["q1", "q2", "q4"] if text is None else ["q1", "q2", "q3", "q4"])
+        other = publish(owner, create(owner))
+        assert alpha.request("POST", f"/api/fill/{other['token']}/submit", payload()).status_code == 200
+        stats = owner.request("GET", f"/api/surveys/{s['id']}/stats").json()
+        assert stats["total"] == 4 and stats["respondentCount"] == 2
+        assert db.responses.count_documents({"surveyId": ObjectId(s["id"])}) == 4
+        assert [(q["answered"], q["respondentCount"]) for q in stats["questions"]] == [(4, 2), (3, 2), (2, 2), (3, 2)]
+        a, b, c, d = stats["questions"]
+        assert [(o["count"], o["respondentCount"]) for o in a["options"]] == [(2, 2), (1, 1), (1, 1)]
+        assert [(o["count"], o["respondentCount"]) for o in b["options"]] == [(1, 1), (3, 2), (1, 1)]
+        assert {r["value"] for r in c["contents"]} == {"甲", "乙"}
+        assert {r["author"] for r in c["contents"]} == {"匿名"}
+        assert d["average"] == "20"
+        assert {r["value"] for r in d["contents"]} == {"10", "20", "30"}
+        assert not {"respondentId", "singleSubmissionKey", "payloadHash"} & set(str(stats).split("'"))
+        for q in stats["questions"]:
+            single = owner.request("GET", f"/api/surveys/{s['id']}/questions/{q['questionId']}/stats").json()
+            assert single == q
+        for skip in [0, 1, 2, 3]:
+            page = owner.request("GET", f"/api/surveys/{s['id']}/questions/q4/stats?skip={skip}&limit=1").json()
+            assert (page["answered"], page["respondentCount"], page["average"]) == (3, 2, "20")
+        isolated = owner.request("GET", f"/api/surveys/{other['id']}/stats").json()
+        assert (isolated["total"], isolated["respondentCount"]) == (1, 1)
+    finally:
+        alpha.client.close()
+        beta.client.close()

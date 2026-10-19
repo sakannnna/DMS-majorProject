@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="1.661" timestamp="2026-10-19T11:24:36.547268+08:00" hostname="faint"><testcase classname="tests.test_system" name="test_T23_complete_flow_smoke" time="0.791" /></testsuite></testsuites>

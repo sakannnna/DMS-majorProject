@@ -63,16 +63,27 @@ def mutate(db, survey, user, revision, changes, required_status=None):
     return public(result)
 
 
+def response_counts(db, pipeline):
+    rows = list(db.responses.aggregate(pipeline + [
+        {"$group": {"_id": "$respondentId", "n": {"$sum": 1}}},
+        {"$group": {"_id": None, "total": {"$sum": "$n"}, "respondentCount": {"$sum": 1}}}]))
+    return rows[0] if rows else {"total": 0, "respondentCount": 0}
+
+
 def question_stats(db, survey, question, skip=0, limit=20):
     base = [{"$match": {"surveyId": survey["_id"]}}, {"$unwind": "$answers"},
             {"$match": {"answers.questionId": question["id"]}}]
-    counts = list(db.responses.aggregate(base + [{"$count": "n"}]))
-    count = counts[0]["n"] if counts else 0
-    result = {"questionId": question["id"], "title": question["title"], "kind": question["kind"], "answered": count}
+    counts = response_counts(db, base)
+    count = counts["total"]
+    result = {"questionId": question["id"], "title": question["title"], "kind": question["kind"],
+              "answered": count, "respondentCount": counts["respondentCount"]}
     if question["kind"] in ("single", "multiple"):
         pipeline = base + ([{"$unwind": "$answers.value"}] if question["kind"] == "multiple" else [])
-        totals = {row["_id"]: row["n"] for row in db.responses.aggregate(pipeline + [{"$group": {"_id": "$answers.value", "n": {"$sum": 1}}}])}
-        result["options"] = [{**o, "count": totals.get(o["id"], 0)} for o in question["options"]]
+        totals = {row["_id"]: row for row in db.responses.aggregate(pipeline + [
+            {"$group": {"_id": {"option": "$answers.value", "account": "$respondentId"}, "n": {"$sum": 1}}},
+            {"$group": {"_id": "$_id.option", "count": {"$sum": "$n"}, "respondentCount": {"$sum": 1}}}])}
+        result["options"] = [{**o, "count": totals.get(o["id"], {}).get("count", 0),
+                              "respondentCount": totals.get(o["id"], {}).get("respondentCount", 0)} for o in question["options"]]
     else:
         rows = list(db.responses.aggregate(base + [{"$sort": {"submittedAt": -1, "_id": -1}}, {"$skip": skip}, {"$limit": limit}]))
         # User references never leave this function; resolve names only for non-anonymous rows.
@@ -283,7 +294,8 @@ def create_app(database=None):
     def stats(survey_id: str, request: Request, user=Depends(current_user)):
         db = request.app.state.db
         survey = owned(db, survey_id, user)
-        return {"total": db.responses.count_documents({"surveyId": survey["_id"]}),
+        counts = response_counts(db, [{"$match": {"surveyId": survey["_id"]}}])
+        return {"total": counts["total"], "respondentCount": counts["respondentCount"],
                 "questions": [question_stats(db, survey, q) for q in survey["questions"]]}
 
     @app.get("/api/surveys/{survey_id}/questions/{question_id}/stats", tags=["统计"], response_model=QuestionStatsOut)
