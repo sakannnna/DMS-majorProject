@@ -1,4 +1,4 @@
-"""Explicit, resumable stage-two part-one upgrade. Stop the app before running."""
+"""Explicit, resumable stage-two upgrade. Stop the app before running."""
 import argparse
 import hashlib
 import re

@@ -149,3 +149,29 @@ class InstanceUpgrade(Revision):
 class InstanceDelete(Revision):
     operationKey: str = Field(pattern=r"^[a-zA-Z0-9_-]{8,80}$")
     ruleUpdates: dict[str, list[Rule]] = Field(default_factory=dict, max_length=100)
+
+
+class DeriveQuestion(InputModel):
+    name: str = Field(min_length=1, max_length=200)
+    creationKey: str = Field(pattern=r"^[a-zA-Z0-9_-]{8,80}$")
+
+
+class ShareCreate(InputModel):
+    username: str = Field(min_length=2, max_length=40)
+
+
+class BankCreate(InputModel):
+    name: str = Field(min_length=1, max_length=200)
+
+
+class BankUpdate(Revision):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    archived: bool | None = None
+
+
+class BankItemCreate(InputModel):
+    versionId: str
+
+
+class BankItemUpdate(Revision):
+    versionId: str

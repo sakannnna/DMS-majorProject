@@ -46,13 +46,18 @@ def env():
     name = "survey_course_test_" + uuid.uuid4().hex
     db = client[name]
     app = create_app(db)
-    with TestClient(app):
-        owner = Browser(app).account("owner")
-        yield db, app, owner
-        owner.client.close()
-    assert name.startswith("survey_course_test_") and len(name) == len("survey_course_test_") + 32
-    client.drop_database(name)
-    client.close()
+    owner = None
+    try:
+        with TestClient(app):
+            owner = Browser(app).account("owner")
+            yield db, app, owner
+    finally:
+        # Also clean this exact generated database when startup/setup fails before yield.
+        if owner is not None:
+            owner.client.close()
+        assert name.startswith("survey_course_test_") and len(name) == len("survey_course_test_") + 32
+        client.drop_database(name)
+        client.close()
 
 
 def question(kind="single", id="q1", **extra):
@@ -496,7 +501,7 @@ def measured_case(name, db):
         raise
     finally:
         report["elapsedSeconds"] = round(time.perf_counter() - started, 3)
-        prefix = os.getenv("SURVEY_TEST_EVIDENCE_PREFIX", "stage2-part1-")
+        prefix = os.getenv("SURVEY_TEST_EVIDENCE_PREFIX", "stage2-part2-")
         if not all(c.isalnum() or c in "_-" for c in prefix):
             raise ValueError("Invalid evidence prefix")
         target = Path(__file__).resolve().parents[1] / "docs" / "evidence" / f"{prefix}{name}.json"
@@ -989,6 +994,9 @@ def test_T33_explicit_upgrade_preserves_legacy_data_and_exports(env, tmp_path, m
             response = client.post(f"/api/surveys/{s['id']}/questions/q1/save-as-reusable", json={"name": "旧年龄", "operationKey": "legacy-export-key"})
             assert response.status_code == 200, response.text
             assert response.json()["latestVersion"]["content"]["kind"] == "number"
+            exported_version = response.json()["latestVersion"]["id"]
+            exported_stats = client.get(f"/api/question-versions/{exported_version}/stats").json()
+            assert (exported_stats["answerCount"], exported_stats["responseCount"], exported_stats["respondentCount"]) == (0, 0, 0)
             assert legacy_db.surveys.find_one() == old_s and legacy_db.responses.find_one() == old_r
             stats = client.get(f"/api/surveys/{s['id']}/stats").json()
             assert stats["total"] == 1 and stats["questions"][0]["average"] == "12"
@@ -1101,3 +1109,266 @@ def test_T32_instance_limit_returns_validation_error_without_write(env):
         "versionId": q["latestVersion"]["id"], "editRevision": s["editRevision"], "operationKey": uuid.uuid4().hex})
     assert r.status_code == 422
     assert db.surveys.find_one({"_id": ObjectId(s["id"])}) == before
+
+
+# Stage two part two: expectations are fixed from the confirmed business rules.
+def share_with(owner, vid, name):
+    r = owner.request("POST", f"/api/question-versions/{vid}/shares", {"username": name})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def revoke(owner, entry):
+    r = owner.request("DELETE", f"/api/question-versions/{entry['versionId']}/shares/{entry['recipientId']}",
+                      {"editRevision": entry["editRevision"]})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def submit_values(who, s, values, **extra):
+    body = payload([{"questionId": q["id"], "value": value} for q, value in zip(s["questions"], values)], **extra)
+    r = who.request("POST", f"/api/fill/{s['token']}/submit", body)
+    assert r.status_code == 200, r.text
+    assert who.request("POST", f"/api/fill/{s['token']}/submit", body).json()["replayed"]
+    return r.json()
+
+
+@pytest.mark.parametrize("whole", [False, True])
+def test_T35_shared_revoke_preserves_existing_but_blocks_new(env, whole):
+    db, app, owner = env
+    receiver = Browser(app).account("receiver")
+    outsider = Browser(app).account("outsider")
+    q = reusable(owner); v1 = q["latestVersion"]
+    v2, _ = add_version(owner, q, {**v1["content"], "title": "private newer"}, v1["id"])
+    share = share_with(owner, v1["id"], "RECEIVER")
+    assert receiver.request("GET", f"/api/question-versions/{v1['id']}").status_code == 200
+    assert receiver.request("GET", f"/api/question-versions/{v2['id']}").status_code == 404
+    for path in (f"/api/reusable-questions/{q['id']}", f"/api/reusable-questions/{q['id']}/versions", f"/api/question-versions/{v1['id']}/shares"):
+        assert receiver.request("GET", path).status_code == 404
+    assert outsider.request("GET", "/api/shared-question-versions").json() == []
+    s, _ = add_to(receiver, create(receiver, []), v1["id"])
+    body = {"name": "mine", "creationKey": "derive-fixed-key"}
+    derived = receiver.request("POST", f"/api/question-versions/{v1['id']}/derive", body)
+    assert derived.status_code == 200
+    d = derived.json(); assert d["latestVersion"]["parentVersionId"] == v1["id"]
+    revoked = revoke(owner, share)
+    assert receiver.request("GET", "/api/shared-question-versions").json() == []
+    assert receiver.request("GET", f"/api/question-versions/{v1['id']}").status_code == 404
+    before = db.surveys.find_one({"_id": ObjectId(s["id"])})
+    if whole:
+        b = whole_body(s, questions=s["questions"] + [{**s["questions"][0], "id": "another"}])
+        blocked = receiver.request("PUT", f"/api/surveys/{s['id']}", b)
+    else:
+        blocked = receiver.request("POST", f"/api/surveys/{s['id']}/question-instances", {
+            "versionId": v1["id"], "editRevision": s["editRevision"], "operationKey": "new-use-after-revoke"})
+    assert blocked.status_code == 404 and db.surveys.find_one({"_id": ObjectId(s["id"])}) == before
+    assert receiver.request("POST", f"/api/question-versions/{v1['id']}/derive", {**body, "creationKey": "new-derived-key"}).status_code == 404
+    assert receiver.request("POST", f"/api/surveys/{s['id']}/questions/{s['questions'][0]['id']}/save-as-reusable", {
+        "name": "bypass", "operationKey": "no-export-bypass"}).status_code == 404
+    # Retained positions can still be arranged/published; owned derivatives survive.
+    b = whole_body(s); b["questions"][0]["required"] = False
+    saved = receiver.request("PUT", f"/api/surveys/{s['id']}", b)
+    assert saved.status_code == 200
+    s = publish(receiver, saved.json());submit_values(receiver, s, ["10"])
+    stats = receiver.request("GET", f"/api/question-versions/{v1['id']}/stats").json()
+    assert (stats["answerCount"], stats["responseCount"], stats["respondentCount"], stats["average"]) == (1,1,1,"10")
+    history = receiver.request("GET", f"/api/question-versions/{d['latestVersion']['id']}/history").json()
+    assert history["nodes"][1] == {"versionId": v1["id"], "accessible": False, "version": None}
+    assert "private newer" not in json.dumps(history)
+    own_version, _ = add_version(receiver, d, {**d["latestVersion"]["content"], "title": "independent"}, d["latestVersion"]["id"])
+    assert own_version["versionNo"] == 2
+    # Same admitted derivation retries return the same resource even after revocation.
+    assert receiver.request("POST", f"/api/question-versions/{v1['id']}/derive", body).json()["id"] == d["id"]
+    assert owner.request("PUT", f"/api/question-versions/{v1['id']}/shares/{share['recipientId']}",
+                         {"editRevision": share["editRevision"]}).status_code == 409
+    assert owner.request("PUT", f"/api/question-versions/{v1['id']}/shares/{share['recipientId']}",
+                         {"editRevision": revoked["editRevision"]}).status_code == 200
+    assert db.questionShares.count_documents({}) == 1
+
+
+def test_T36_bank_versions_restricted_placeholders_and_ownership(env):
+    db, app, owner = env
+    other = Browser(app).account("bankreader")
+    q = reusable(owner);v1 = q["latestVersion"]
+    v2, _ = add_version(owner, q, {**v1["content"], "title": "new age"}, v1["id"])
+    banks = [owner.request("POST", "/api/question-banks", {"name": n}).json() for n in ("base", "other")]
+    def put(who, bid, vid):
+        r = who.request("POST", f"/api/question-banks/{bid}/items", {"versionId": vid})
+        assert r.status_code == 200,r.text
+        return r.json()
+    i1 = put(owner,banks[0]["id"],v1["id"]);i2=put(owner,banks[1]["id"],v1["id"])
+    assert put(owner,banks[0]["id"],v1["id"])["id"] == i1["id"]
+    assert owner.request("PATCH", f"/api/question-banks/{banks[0]['id']}/items/{i1['id']}", {
+        "editRevision": i1["editRevision"], "versionId": v2["id"]}).status_code == 200
+    assert owner.request("GET", f"/api/question-banks/{banks[1]['id']}/items").json()[0]["selectedVersionId"] == v1["id"]
+    assert other.request("GET", f"/api/question-banks/{banks[0]['id']}/items").status_code == 404
+    share = share_with(owner,v1["id"],"bankreader")
+    private = other.request("POST", "/api/question-banks", {"name": "shared items"}).json()
+    item = put(other,private["id"],v1["id"])
+    revoke(owner,share)
+    hidden=other.request("GET",f"/api/question-banks/{private['id']}/items").json()[0]
+    assert hidden["accessible"] is False and hidden["selectable"] is False and hidden["version"] is None
+    assert other.request("DELETE", f"/api/question-banks/{private['id']}/items/{item['id']}", {"editRevision":item["editRevision"]}).status_code == 200
+    archived=owner.request("PATCH",f"/api/question-banks/{banks[1]['id']}",{"editRevision":1,"archived":True}).json()
+    assert owner.request("GET", f"/api/question-banks/{banks[1]['id']}/items").json()[0]["selectable"] is False
+    assert owner.request("POST", f"/api/question-banks/{banks[1]['id']}/items", {"versionId":v2["id"]}).status_code == 409
+    assert owner.request("PATCH",f"/api/question-banks/{banks[1]['id']}",{"editRevision":archived["editRevision"],"archived":False}).status_code == 200
+    assert db.questionVersions.count_documents({}) == 2
+
+
+def test_T37_exact_numeric_aggregation_scope_pagination(env):
+    db, app, owner=env
+    q=reusable(owner);v=q["latestVersion"]
+    s1,_=add_to(owner,create(owner,[],allowMultiple=True),v["id"])
+    s1,_=add_to(owner,s1,v["id"],required=False);s1=publish(owner,s1)
+    s2,_=add_to(owner,create(owner,[],allowMultiple=True),v["id"]);s2=publish(owner,s2)
+    a=Browser(app).account("numericA");b=Browser(app).account("numericB")
+    submit_values(a,s1,["10","20"]);submit_values(a,s1,["30",None]);submit_values(a,s2,["40"],anonymous=False);submit_values(b,s2,["50"])
+    # Same version used by someone else, another version and a derivative must not enter scope.
+    share_with(owner,v["id"],"numericB")
+    foreign,_=add_to(b,create(b,[]),v["id"]);foreign=publish(b,foreign);submit_values(b,foreign,["100"])
+    v2,_=add_version(owner,q,{**v["content"],"title":"age2"},v["id"])
+    distinct,_=add_to(owner,create(owner,[]),v2["id"]);distinct=publish(owner,distinct);submit_values(a,distinct,["90"])
+    d=owner.request("POST",f"/api/question-versions/{v['id']}/derive",{"name":"copy","creationKey":"stats-derived-key"}).json()
+    derived,_=add_to(owner,create(owner,[]),d["latestVersion"]["id"]);derived=publish(owner,derived);submit_values(a,derived,["80"])
+    url=f"/api/question-versions/{v['id']}"
+    r=owner.request("GET",url+"/stats");assert r.status_code==200,r.text
+    data=r.json();assert (data["answerCount"],data["responseCount"],data["respondentCount"] )==(5,4,2)
+    assert (Decimal128(data["average"]),Decimal128(data["minimum"]),Decimal128(data["maximum"]))==(Decimal128("30"),Decimal128("10"),Decimal128("50"))
+    assert set(data["surveyIds"])=={s1["id"],s2["id"]}
+    filtered=owner.request("GET",url+f"/stats?surveyId={s1['id']}").json()
+    assert (filtered["answerCount"],filtered["responseCount"],filtered["respondentCount"] )==(3,2,1)
+    assert owner.request("GET",url+f"/stats?surveyId={s1['id']}&surveyId={foreign['id']}").status_code==404
+    # Tie all submission times: full ordering must still preserve every local position.
+    db.responses.update_many({}, {"$set":{"submittedAt":now()}})
+    details=[];distribution=[]
+    for skip in (0,2,4):
+        page=owner.request("GET",url+f"/contents?skip={skip}&limit=2").json();details+=page["items"]
+        assert page["hasMore"]==(skip<4)
+        page=owner.request("GET",url+f"/distribution?skip={skip}&limit=2").json();distribution+=page["items"]
+        assert page["hasMore"]==(skip<4)
+    assert len({r["entryId"] for r in details})==5 and sorted(int(r["value"]) for r in details)==[10,20,30,40,50]
+    assert [int(r["value"]) for r in distribution]==[10,20,30,40,50] and all(r["answerCount"]==1 for r in distribution)
+    assert sorted(r["author"] for r in details)==["numericA","匿名","匿名","匿名","匿名"]
+    assert all("respondentId" not in row for row in details)
+    usages=owner.request("GET",f"/api/reusable-questions/{q['id']}/usages").json()
+    assert usages["scope"]=="ownedSurveys" and {i["surveyId"] for i in usages["items"]}=={s1["id"],s2["id"],distinct["id"]}
+    assert all(i["surveyId"]!=foreign["id"] for i in usages["items"])
+    assert next(i for i in usages["items"] if i["surveyId"]==s1["id"])["occurrenceCount"]==2
+
+
+@pytest.mark.parametrize("kind",["single","multiple"])
+def test_T38_option_counts_are_entries_responses_accounts(env,kind):
+    db,app,owner=env;q=reusable(owner,kind);v=q["latestVersion"]
+    s,_=add_to(owner,create(owner,[],allowMultiple=True),v["id"])
+    s,_=add_to(owner,s,v["id"],required=False);s=publish(owner,s)
+    def value(x): return [x] if kind=="multiple" else x
+    submit_values(owner,s,[value("a"),value("a")]);submit_values(owner,s,[value("b"),None])
+    r=owner.request("GET",f"/api/question-versions/{v['id']}/stats").json()
+    assert (r["answerCount"],r["responseCount"],r["respondentCount"])==(3,2,1)
+    assert [(x["answerCount"],x["responseCount"],x["respondentCount"]) for x in r["options"]]==[(2,1,1),(1,1,1),(0,0,0)]
+    assert owner.request("GET",f"/api/question-versions/{v['id']}/contents").status_code==422
+    # First-stage whole-survey count still means submissions, not entries.
+    old=owner.request("GET",f"/api/surveys/{s['id']}/stats").json();assert old["total"]==2
+
+
+def test_T39_empty_text_numeric_group_and_contracts(env):
+    from app.contracts import CrossStatsOut
+    from pydantic import ValidationError
+    db,app,owner=env
+    for kind in ("text","number"):
+        q=reusable(owner,kind);v=q["latestVersion"]
+        empty=owner.request("GET",f"/api/question-versions/{v['id']}/stats").json()
+        assert (empty["answerCount"],empty["responseCount"],empty["respondentCount"])==(0,0,0)
+        assert empty["average"] is None
+        with pytest.raises(ValidationError):
+            CrossStatsOut.model_validate({k:x for k,x in empty.items() if k!="answerCount"})
+        s,_=add_to(owner,create(owner,[],allowMultiple=True),v["id"]);s=publish(owner,s)
+        values=["1","1.0"] if kind=="number" else [" hello ","world"]
+        for x in values: submit_values(owner,s,[x])
+        detail=owner.request("GET",f"/api/question-versions/{v['id']}/contents").json()
+        assert sorted(r["value"] for r in detail["items"])==(["1","1.0"] if kind=="number" else ["hello","world"])
+        if kind=="number":
+            distribution=owner.request("GET",f"/api/question-versions/{v['id']}/distribution").json()
+            assert len(distribution["items"])==1 and distribution["items"][0]["answerCount"]==2
+        else:
+            assert owner.request("GET",f"/api/question-versions/{v['id']}/distribution").status_code==422
+
+
+def test_T40_part_one_database_requires_explicit_expansion(env,monkeypatch):
+    from app.database import initialize,upgrade
+    db,app,owner=env
+    s=create(owner);q=reusable(owner);before=db.surveys.find_one()
+    for name in ("questionShares","questionBanks","questionBankItems"):
+        db.drop_collection(name)
+    with pytest.raises(RuntimeError,match="Incomplete migration"):
+        initialize(db)
+    upgrade(db);upgrade(db);initialize(db)
+    assert db.surveys.find_one()==before and db.questionVersions.count_documents({})==1
+    assert {"questionShares","questionBanks","questionBankItems"}<=set(db.list_collection_names())
+
+
+@pytest.mark.parametrize("admitted",[False,True])
+def test_T35_revocation_recovery_and_last_authorization_admission(env,monkeypatch,admitted):
+    from pymongo.collection import Collection
+    db,app,owner=env;receiver=Browser(app).account("recoverreader")
+    q=reusable(owner);v=q["latestVersion"];entry=share_with(owner,v["id"],"recoverreader")
+    original=Collection.insert_one
+    triggered=False
+    def insert(self,document,*args,**kwargs):
+        nonlocal triggered
+        if self.database.name==db.name and self.name==("reusableQuestions" if admitted else "questionVersions"):
+            if admitted and not triggered:
+                triggered=True
+                revoke(owner,entry)
+            elif not admitted:
+                raise RuntimeError("explicit interrupted derivation")
+        return original(self,document,*args,**kwargs)
+    body={"name":"received","creationKey":"admitted-derivation"}
+    with monkeypatch.context() as m:
+        m.setattr(Collection,"insert_one",insert)
+        if admitted:
+            result=receiver.request("POST",f"/api/question-versions/{v['id']}/derive",body)
+            assert result.status_code==200,result.text
+        else:
+            with pytest.raises(RuntimeError,match="explicit interrupted"):
+                receiver.request("POST",f"/api/question-versions/{v['id']}/derive",body)
+    if not admitted:
+        revoke(owner,entry)
+        pending=receiver.request("GET","/api/reusable-questions").json()[0]
+        assert pending["pendingSave"] and pending["latestVersion"] is None
+        result=receiver.request("POST",f"/api/reusable-questions/{pending['id']}/recover-save",{
+            "editRevision":pending["editRevision"],"operationId":pending["pendingSave"]["operationId"]})
+        assert result.status_code==200,result.text
+    assert db.questionVersions.count_documents({})==2
+    assert receiver.request("POST",f"/api/question-versions/{v['id']}/derive",{**body,"creationKey":"new-after-revoked"}).status_code==404
+
+
+def test_T40_part_one_program_rejects_later_collections(env):
+    db,app,owner=env
+    namespace={"__name__":"stage2_part1_database"}
+    source=subprocess.check_output(["git","show","cbaec6a:app/database.py"]).decode("utf-8")
+    exec(compile(source,"stage2-part1/app/database.py","exec"),namespace)
+    before={name:db[name].options() for name in db.list_collection_names()}
+    with pytest.raises(RuntimeError,match="later application stage"):
+        namespace["initialize"](db)
+    assert before=={name:db[name].options() for name in db.list_collection_names()}
+
+
+def test_T36_archived_question_and_exact_history_scope(env):
+    db,app,owner=env;reader=Browser(app).account("historyreader")
+    q=reusable(owner);v1=q["latestVersion"];v2,_=add_version(owner,q,{**v1["content"],"title":"shared-new"},v1["id"])
+    share_with(owner,v2["id"],"historyreader")
+    history=reader.request("GET",f"/api/question-versions/{v2['id']}/history").json()
+    assert [n["accessible"] for n in history["nodes"]]==[True,False]
+    assert history["nodes"][1]["version"] is None
+    s,_=add_to(reader,create(reader,[]),v2["id"])
+    before=db.surveys.find_one({"_id":ObjectId(s["id"])})
+    fresh=owner.request("GET",f"/api/reusable-questions/{q['id']}").json()
+    assert owner.request("PATCH",f"/api/reusable-questions/{q['id']}",{"editRevision":fresh["editRevision"],"archived":True}).status_code==200
+    assert reader.request("GET","/api/shared-question-versions").json()==[]
+    assert reader.request("GET",f"/api/question-versions/{v2['id']}").status_code==200
+    assert reader.request("POST",f"/api/question-versions/{v2['id']}/derive",{"name":"blocked","creationKey":"archived-derived"}).status_code==409
+    assert owner.request("POST",f"/api/question-versions/{v1['id']}/shares",{"username":"historyreader"}).status_code==409
+    assert db.surveys.find_one({"_id":ObjectId(s["id"])})==before
+    publish(reader,s)

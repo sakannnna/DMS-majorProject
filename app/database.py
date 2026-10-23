@@ -37,7 +37,7 @@ def connect():
     return client, client[name]
 
 
-# Part 1 adds only the collections that are actually used. Sharing/banks follow later.
+# Collection validators are preflighted together before any explicit upgrade writes.
 SCHEMAS = {
     "users": {"usernameKey": "string", "username": "string", "passwordHash": "string", "createdAt": "date"},
     "surveys": {"ownerId": "objectId", "token": "string", "title": "string", "questions": "array", "status": "string",
@@ -49,13 +49,16 @@ SCHEMAS = {
     "reusableQuestions": {"ownerId": "objectId", "name": "string", "archived": "bool", "editRevision": "int",
                           "nextVersionNo": "int", "creationKey": "string", "requestHash": "string",
                           "createdAt": "date", "updatedAt": "date"},
+    "questionShares": {"versionId": "objectId", "recipientId": "objectId", "active": "bool", "editRevision": "int", "createdAt": "date"},
+    "questionBanks": {"ownerId": "objectId", "name": "string", "archived": "bool", "editRevision": "int", "createdAt": "date", "updatedAt": "date"},
+    "questionBankItems": {"bankId": "objectId", "questionId": "objectId", "selectedVersionId": "objectId", "editRevision": "int", "createdAt": "date", "updatedAt": "date"},
     "questionVersions": {"questionId": "objectId", "versionNo": "int", "content": "object", "creationKey": "string",
                          "requestHash": "string", "createdAt": "date"},
 }
 
 
 def versions_for(name):
-    return [1, 2] if name == "surveys" else [2] if name in ("reusableQuestions", "questionVersions") else [1]
+    return [1, 2] if name == "surveys" else [2] if name not in ("users", "sessions", "responses") else [1]
 
 
 def preflight(db, upgrading=False):
@@ -69,8 +72,6 @@ def preflight(db, upgrading=False):
         supported = [allowed] + ([[1]] if upgrading and name == "surveys" else [])
         if db[name].options().get("validator") != expected_validator or enums not in supported or db[name].find_one({"schemaVersion": {"$nin": allowed}}, {"_id": 1}):
             raise RuntimeError(f"Unsupported schema in {name}; explicit migration required (旧库请先运行 upgrade-db.py)")
-    if existing & {"questionShares", "questionBanks", "questionBankItems"}:
-        raise RuntimeError("Unsupported schema: database belongs to a later application stage")
     return existing
 
 
@@ -108,6 +109,11 @@ def install(db, existing):
     db.questionVersions.create_index([("questionId", 1), ("creationKey", 1)], unique=True)
     db.questionVersions.create_index([("parentVersionId", 1), ("_id", 1)])
     db.surveys.create_index([("ownerId", 1), ("questions.sourceVersionId", 1), ("_id", 1)])
+    db.questionShares.create_index([("versionId", 1), ("recipientId", 1)], unique=True)
+    db.questionShares.create_index([("recipientId", 1), ("active", 1), ("versionId", 1)])
+    db.questionBanks.create_index([("ownerId", 1), ("archived", 1), ("updatedAt", -1), ("_id", -1)])
+    db.questionBankItems.create_index([("bankId", 1), ("questionId", 1)], unique=True)
+    db.questionBankItems.create_index([("bankId", 1), ("createdAt", -1), ("_id", -1)])
     # Only drop the known redundant prefix after its replacement has been built.
     for name, spec in db.responses.index_information().items():
         if spec["key"] == [("surveyId", 1), ("submittedAt", -1)] and not spec.get("unique"):

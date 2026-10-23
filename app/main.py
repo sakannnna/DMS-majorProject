@@ -22,6 +22,7 @@ from .logic import deadline, fail, prepare_survey, validate_definition, walk
 from .models import (Credentials, MetadataUpdate, Revision, Submission, SurveyInput, SurveyUpdate, WalkInput,
                      ExportQuestion, InstanceAdd, InstanceUpgrade, InstanceDelete, ReusableCreate, QuestionContent)
 from .reusable import router as question_router, readable_version, new_question, content_of
+from .question_management import router as management_router
 from .survey_questions import definition, save_definition
 from .security import DUMMY_HASH, create_session, current_user, digest, hasher, username, verify
 
@@ -115,10 +116,11 @@ def create_app(database=None):
         if client:
             client.close()
 
-    app = FastAPI(title="MongoDB 问卷系统", version="2.1.0", lifespan=lifespan,
+    app = FastAPI(title="MongoDB 问卷系统", version="2.2.0", lifespan=lifespan,
                   responses={code: {"model": ErrorOut} for code in (401, 403, 404, 409, 413, 422)})
     app.mount("/static", StaticFiles(directory=str(ROOT / "static")), name="static")
     app.include_router(question_router)
+    app.include_router(management_router)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request, exc):

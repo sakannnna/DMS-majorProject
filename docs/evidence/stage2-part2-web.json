@@ -1,0 +1,242 @@
+{
+  "date": "2026-10-23",
+  "method": "AI operated the in-app browser. API prepared two fictitious accounts, numeric V1/V2 and the fixed 5-answer sample; later separately seeded 22 answers for browser pagination. Sharing, banks, version selection, derivation, revocation, preserved-draft publication/fill and result viewing were actual webpage operations. Final data independently checked via API/MongoDB.",
+  "database": "survey_course_test_29c0009f832544f896e84df544f632f8",
+  "prepared": {
+    "initial": "Owner S1 twice V1:10/20 and30/empty; S2:owner40,reader50. Expected5 entries/4responses/2accounts,mean30.",
+    "pagination": "Separate V1,11 responses with two positions each,values0..21. Expected22/11/1,mean10.5."
+  },
+  "actual": {
+    "ownerStatsAfterRecipientSubmission": {
+      "answerCount": 5,
+      "responseCount": 4,
+      "respondentCount": 2,
+      "versionId": "6adb43140d5d68823918de27",
+      "scope": "ownedSurveys",
+      "surveyIds": [
+        "6adb43140d5d68823918de29",
+        "6adb43140d5d68823918de2a"
+      ],
+      "title": "网页年龄",
+      "kind": "number",
+      "options": [],
+      "average": "30",
+      "minimum": "10",
+      "maximum": "50"
+    },
+    "recipientSnapshotStatsAfterRevocation": {
+      "answerCount": 2,
+      "responseCount": 1,
+      "respondentCount": 1,
+      "versionId": "6adb43140d5d68823918de27",
+      "scope": "ownedSurveys",
+      "surveyIds": [
+        "6adb43fd373494bb28501139"
+      ],
+      "title": "网页年龄",
+      "kind": "number",
+      "options": [],
+      "average": "15",
+      "minimum": "10",
+      "maximum": "20"
+    },
+    "directSourceReadStatus": 404,
+    "sharedListAfterRevocation": [],
+    "bankOwnSelectedVersion": "6adb43140d5d68823918de28",
+    "receiverBankRestricted": {
+      "accessible": false,
+      "selectable": false,
+      "version": null
+    },
+    "derivedSourceHistoryAccessibility": [
+      true,
+      false
+    ],
+    "subsetStatsObserved": {
+      "answerCount": 3,
+      "responseCount": 2,
+      "respondentCount": 1,
+      "average": "20"
+    },
+    "pagination": {
+      "detailFirst": [
+        {
+          "entryId": "6adb456cb7a7e1fb774cade9:r3058b04cfd5713e8f5add1168c2021ef351ad5e2f24edd5d",
+          "value": "21"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade9:ra07b1d440403b87d60189db88c0a056cc733eef4d96acc29",
+          "value": "20"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade8:r3058b04cfd5713e8f5add1168c2021ef351ad5e2f24edd5d",
+          "value": "19"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade8:ra07b1d440403b87d60189db88c0a056cc733eef4d96acc29",
+          "value": "18"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade7:r3058b04cfd5713e8f5add1168c2021ef351ad5e2f24edd5d",
+          "value": "17"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade7:ra07b1d440403b87d60189db88c0a056cc733eef4d96acc29",
+          "value": "16"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade6:r3058b04cfd5713e8f5add1168c2021ef351ad5e2f24edd5d",
+          "value": "15"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade6:ra07b1d440403b87d60189db88c0a056cc733eef4d96acc29",
+          "value": "14"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade5:r3058b04cfd5713e8f5add1168c2021ef351ad5e2f24edd5d",
+          "value": "13"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade5:ra07b1d440403b87d60189db88c0a056cc733eef4d96acc29",
+          "value": "12"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade4:r3058b04cfd5713e8f5add1168c2021ef351ad5e2f24edd5d",
+          "value": "11"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade4:ra07b1d440403b87d60189db88c0a056cc733eef4d96acc29",
+          "value": "10"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade3:r3058b04cfd5713e8f5add1168c2021ef351ad5e2f24edd5d",
+          "value": "9"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade3:ra07b1d440403b87d60189db88c0a056cc733eef4d96acc29",
+          "value": "8"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade2:r3058b04cfd5713e8f5add1168c2021ef351ad5e2f24edd5d",
+          "value": "7"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade2:ra07b1d440403b87d60189db88c0a056cc733eef4d96acc29",
+          "value": "6"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade1:r3058b04cfd5713e8f5add1168c2021ef351ad5e2f24edd5d",
+          "value": "5"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade1:ra07b1d440403b87d60189db88c0a056cc733eef4d96acc29",
+          "value": "4"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade0:r3058b04cfd5713e8f5add1168c2021ef351ad5e2f24edd5d",
+          "value": "3"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774cade0:ra07b1d440403b87d60189db88c0a056cc733eef4d96acc29",
+          "value": "2"
+        }
+      ],
+      "detailSecond": [
+        {
+          "entryId": "6adb456cb7a7e1fb774caddf:r3058b04cfd5713e8f5add1168c2021ef351ad5e2f24edd5d",
+          "value": "1"
+        },
+        {
+          "entryId": "6adb456cb7a7e1fb774caddf:ra07b1d440403b87d60189db88c0a056cc733eef4d96acc29",
+          "value": "0"
+        }
+      ],
+      "distFirst": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19"
+      ],
+      "distSecond": [
+        "20",
+        "21"
+      ]
+    },
+    "paginationSummary": {
+      "answerCount": 22,
+      "responseCount": 11,
+      "respondentCount": 1,
+      "versionId": "6adb456cb7a7e1fb774caddd",
+      "scope": "ownedSurveys",
+      "surveyIds": [
+        "6adb456cb7a7e1fb774cadde"
+      ],
+      "title": "网页分页数字",
+      "kind": "number",
+      "options": [],
+      "average": "10.5",
+      "minimum": "0",
+      "maximum": "21"
+    },
+    "allAssertionsPassed": true
+  },
+  "screenshots": [
+    "stage2-part2-stats.png",
+    "stage2-part2-revoked-history.png",
+    "stage2-part2-pagination.png"
+  ],
+  "toolLimitations": "Some screenshot captures failed; final pagination screenshot succeeded. DOM rows and data checks retained. One stale previous-page node was inspected and retargeted successfully.",
+  "notExecuted": [
+    "No pressure-limit, long-running stability or multi-browser testing.",
+    "Not all permission failures were clicked in the browser; API cases T35/T36 cover denial and concurrency boundaries."
+  ],
+  "cleanup": {
+    "tabClosed": true,
+    "serverStopped": true,
+    "isolatedDatabaseDropped": true,
+    "viewportReset": true,
+    "note": "MongoDB stopped before cleanup; existing start-db.ps1 restarted it, then exact test DB was dropped."
+  },
+  "layoutRetest": {
+    "viewportWidth": 546,
+    "valueCells": [
+      {
+        "value": "50",
+        "width": 116
+      },
+      {
+        "value": "40",
+        "width": 116
+      },
+      {
+        "value": "30",
+        "width": 116
+      },
+      {
+        "value": "20",
+        "width": 116
+      },
+      {
+        "value": "10",
+        "width": 116
+      }
+    ]
+  },
+  "layoutFix": "IDs fold in details, fixed columns and horizontal scrolling prevent squeezed answers. Browser pagination retested after display-only change; at546px answer cells measured116px. Original stats screenshot predates layout fix; pagination screenshot shows final layout."
+}

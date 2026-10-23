@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-23",
+  "baseCommit": "cbaec6a66fc4572411c2818be221c124ebd13f5c",
+  "sourceSha256": {
+    "app/contracts.py": "49d001f38e03a858d09f68ec2129a9ffbc083f572637b8e82b4c24d29da0a8f3",
+    "app/database.py": "a5058f6f93fe5cd6cb242900875269b295ebe73055977fe5bc63a970ac9d3767",
+    "app/logic.py": "2bab3e7d86b8985a6aaa1321f777ddf537fce3a8e9337ec05eadb53c73ec2991",
+    "app/main.py": "4a81d3e036846934b673b14f92808757ed2cc0c8ab341f77f3a59126276dbfc5",
+    "app/models.py": "975f0596610b6861b4ceb0e5700120cfe8b1f6ee7f83d3401c98251d469ae39c",
+    "app/question_management.py": "5581272bfaa6acd5e5e90baa4c497030b5c7642b15af472f492d5ee76a22cacc",
+    "app/reusable.py": "02ea431f9eaff68a0c16795642e358a43049c67f5d9e6271881bf036877bcb80",
+    "app/security.py": "156c76b8d1bac67cd5688014e2f102a2a431b8265fd4642d0fc77ceff6c69fae",
+    "app/survey_questions.py": "2700afdf1b6fdc8fc50f2e1f609c6ff9e8c63d10ff8bdcd9d0594ac23f7dbc3d",
+    "app/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "app/static/app.js": "3281b9bcc3a0baf7d49e700eacc1a4cc6e92ad5adc813784d407fdad35d39ed3",
+    "app/static/style.css": "6dc7b86a1b8e88bcae46e7074337ca532161824b3cfb4db2860040a19370b9b1",
+    "app/templates/index.html": "ad034dbf6ca6d6a43207fd51c147c6706489a67e73b26160a843ed2ccb772601",
+    "tests/test_system.py": "40a777cba2da7da388294e94602e319dcb90b92f7bd87a517fbb0f5d01de309f",
+    "scripts/upgrade-db.py": "1b157a957fb55fcab68cbc8a9ff75d2c1526a0e894ac9f7b3ab95a2dc886f03a"
+  },
+  "finalRegression": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "102",
+    "time": "97.052",
+    "timestamp": "2026-10-23T19:50:22.169185+08:00",
+    "hostname": "faint"
+  },
+  "regressionBoundary": "102 passed in97.08s. Afterwards only JS table markup and CSS display changed; node syntax and targeted browser display/pagination retested; Python unchanged.",
+  "interruptedRun": {
+    "passed": 101,
+    "errors": 1,
+    "seconds": 1120.01,
+    "where": "T08 fixture initialize",
+    "error": "pymongo _OperationCancelled",
+    "rootCause": "Not established; output retained; fixture cleanup extended to startup failures, full rerun passed."
+  },
+  "businessUpgrade": {
+    "backup": ".local/backups/before-stage2-part2-20261023",
+    "beforeCounts": {
+      "questionVersions": 0,
+      "sessions": 0,
+      "responses": 3,
+      "reusableQuestions": 0,
+      "surveys": 4,
+      "users": 3
+    },
+    "oldDocumentsBsonHashUnchanged": true,
+    "newCollectionsEmpty": true,
+    "startupAndOpenAPIPassed": true
+  },
+  "aiLogUpdated": false
+}

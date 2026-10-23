@@ -2,7 +2,7 @@
 
 API是页面与服务端交换数据的入口：例如网页点击“发布”，会发出带问卷编号和编辑版本的请求；服务端返回最新问卷或明确的错误。本文先给调用顺序和完整示例，再列准确的输入输出约定，供用户理解流程，也供开发者检查调用。
 
-字段类型、必填性由[请求模型](../app/models.py)、[输出模型](../app/contracts.py)与[路由](../app/main.py)生成[OpenAPI](http://127.0.0.1:8009/openapi.json)，可在[交互页面](http://127.0.0.1:8009/docs)逐项查询。本文是这些契约的可读说明，不另存一套JSON schema；下文已解释主要输入、输出与空值，阅读时不必先翻代码。须先按[README](../README.md)启动服务；第一阶段旧库先做显式升级。当前仅实现第二阶段第一部分，共享、题库、使用追踪及跨卷统计接口尚不存在。
+字段类型、必填性由[请求模型](../app/models.py)、[输出模型](../app/contracts.py)与[路由](../app/main.py)生成[OpenAPI](http://127.0.0.1:8009/openapi.json)，可在[交互页面](http://127.0.0.1:8009/docs)逐项查询。本文是这些契约的可读说明，不另存一套JSON schema；下文已解释主要输入、输出与空值，阅读时不必先翻代码。须先按[README](../README.md)启动服务；第一阶段旧库先做显式升级。第二阶段两部分接口均已实现；共享只开放准确版本，跨卷结果仍限本人问卷。
 
 ## 认证与请求约定
 
@@ -22,7 +22,7 @@ Cookie用于把后续请求关联到同一浏览器；csrf是写操作需要附�
 | 草稿预览 | POST `/api/surveys/{survey_id}/preview` | 创建者；返回问卷展示数据与遍历结果，绝不写答卷 |
 | 填写 | GET `/api/fill/{token}`；POST `…/walk`、`…/submit` | 所有填写者均须登录；问卷需开放；提交还检查次数 |
 | 独立题目 | GET/POST `/api/reusable-questions`；GET/PATCH `…/{qid}` | 仅所有者；列表可按archived筛选及skip/limit分页 |
-| 不可变版本 | GET/POST `…/{qid}/versions`；POST `…/restore`、`…/recover-save`；GET `/api/question-versions/{vid}`、`…/history` | 仅所有者；保存或恢复创建新版本，不覆盖已有内容 |
+| 不可变版本 | GET/POST `…/{qid}/versions`；POST `…/restore`、`…/recover-save`；GET `/api/question-versions/{vid}`、`…/history` | 系列列表与写操作仅所有者；准确版本读取和历史也允许当前共享接收者；保存或恢复不覆盖已有内容 |
 | 题目选入与旧题复用 | POST `/api/surveys/{sid}/question-instances`、`…/questions/{localId}/upgrade`、`…/save-as-reusable`；DELETE `…/questions/{localId}` | 仅问卷所有者；选入/换版/删除限草稿，旧卷另存题目可用于发布/关闭卷 |
 | 统计 | GET `/api/surveys/{survey_id}/stats`、`…/questions/{question_id}/stats` | 仅创建者；单题内容支持 skip、limit 分页 |
 
@@ -174,6 +174,58 @@ $s = Write-Api 'POST' "/api/surveys/$($s.id)/questions/$($s.questions[0].id)/upg
 }
 ```
 
+## 第二阶段第二部分：共享、题库与跨卷结果
+
+接收共享相当于获得某一份正式题目内容的使用权，不是取得原作者的整个题目系列、问卷或答卷。各接口仍检查Cookie与CSRF；无权读取统一404，修订过期409，结构或业务输入不合法422。新增列表默认skip=0、limit=20，上限100；列表无元素为[]。以下所有写接口返回200，只有新建题库为201。
+
+| 路径 | 输入、权限与输出 |
+| --- | --- |
+| POST `/api/question-versions/{vid}/derive` | name、creationKey；新派生要求当前可新用。返回ReusableOut，首版parentVersionId为来源版。所有者范围的同键重试返回原资源，同键改名409；已准入的中断保存可通过原恢复入口完成 |
+| GET/POST `…/{vid}/shares` | 仅版本所有者；GET分页返回ShareOut数组；POST用准确username查已注册账号并授权。本人无需共享。相同有效授权再次POST返回原记录；已撤销记录须显式PUT重新授权，避免迟到POST复活授权 |
+| GET/PUT/DELETE `…/{vid}/shares/{userId}` | 仅版本所有者；GET读取原授权；PUT重新授权、DELETE撤销，二者JSON正文均含editRevision。均返回ShareOut，DELETE保留授权记录和版本。共享过期修订不覆盖新状态 |
+| GET `/api/shared-question-versions` | 接收者有效且未归档的准确版本；可用questionId筛同一系列已获共享的版本。返回SharedVersionOut数组，每项version与owner用户名；不返回系列草稿、未共享版本或其他接收者 |
+| GET/POST `/api/question-banks`；GET/PATCH `…/{bid}` | 本人分类。GET列表可按archived筛选；POST需name；PATCH带editRevision，可改name/archived。返回BankOut，只有创建返回201 |
+| GET/POST `…/{bid}/items` | 本人题库；GET分页返回BankItemOut数组，撤销来源的条目保留占位；POST传versionId，当前须可新用且题库未归档。同库同题同版返回原条目；不同版409，需主动PATCH |
+| PATCH/DELETE `…/{bid}/items/{itemId}` | PATCH传versionId、条目editRevision，只能同系列且当前可新用；返回BankItemOut。DELETE正文传条目editRevision，可移除受限或归档库中的分类关联；返回`{"message":"已移除分类关联，题目和问卷未删除"}` |
+| GET `/api/reusable-questions/{qid}/usages`；GET `/api/question-versions/{vid}/usages` | 系列接口限所有者；准确版本接口允许当前可读或本人已有合法快照。分页返回UsagesOut，scope固定ownedSurveys，不包含他人使用清单或受限总数 |
+| GET `/api/question-versions/{vid}/stats` | 当前可读版本或本人合法快照；返回CrossStatsOut。仅汇总本人结果范围。默认全部本人相关问卷；重复surveyId参数选子集，最多100个，重复ID去重；含越权或不存在ID则整个请求404。本人不含此版的筛选问卷不贡献数据 |
+| GET `…/{vid}/contents`、`…/{vid}/distribution` | 沿用同一surveyId范围及skip/limit。contents仅文本/数字；distribution仅数字，其他题型422。返回对应分页包装，摘要与均值不随分页改变 |
+
+### 新增输出的阅读方法
+
+- **ShareOut**：id、versionId、recipientId、username、active、editRevision、createdAt、revokedAt；有效授权revokedAt=null。recipientId只供所有者管理指定接收者，不进入填写或统计输出。
+- **BankOut**：id、name、archived、editRevision、createdAt、updatedAt。**BankItemOut**：id、bankId、questionId、selectedVersionId、条目editRevision、accessible、selectable、version、createdAt、updatedAt。accessible=false时version=null；selectable还考虑题目和题库归档，不能只根据缓存按钮判断权限。
+- **UsagesOut**：scope、items、skip、limit、hasMore；每项surveyId、title、status、versionId、questionIds、occurrenceCount。同问卷同版多处合在一项，不同版分项；按versionId、surveyId排序，位置列表保留卷内顺序。
+- **CrossStatsOut**：versionId、scope、surveyIds、title、kind、answerCount、responseCount、respondentCount、options、average、minimum、maximum。三个计数均为必需整数；surveyIds为当前纳入的本人相关问卷。选项每项id、label及同名三计数；非选择题options=[]；非数字或无数值时三个数字摘要为null，非空为十进制字符串。指标含义只在需求与设计维护。
+- **CrossContentsOut**：items、skip、limit、hasMore；每行entryId、surveyId、surveyTitle、questionId、value、author、submittedAt。entryId由答卷与卷内位置构成，不含账号身份；同份的多次出现不能按答卷去重。value为文本/数字字符串，匿名author仅为“匿名”。按时间降序、答卷ID降序、位置ID升序分页。
+- **DistributionOut**：items、skip、limit、hasMore；每项value十进制字符串、answerCount整数。按数值升序，1和1.0同一行；skip跳过的是不同数值行，不是回答条目。没有回答items=[]。
+
+正文与列表都经显式响应模型过滤，内部保存键、摘要、账号身份不会因增加存储字段而自动进入结果。统计每次按当前数据查询，各页间有新提交时不保证固定快照；课程规模未做压力极限承诺。
+
+### 调用示例：共享准确版本、分类和读取结果
+
+沿用前述Write-Api和已登录会话，以及数字题示例的$q、$v2、$s。接收账号recipient_demo须事先注册；该示例用于展示完整输入，不声明整段PowerShell已单独执行，实际API与网页证据见T35—T41。
+
+```powershell
+$vid = $q.latestVersion.id
+$share = Write-Api 'POST' "/api/question-versions/$vid/shares" @{username='recipient_demo'}
+$bank = Write-Api 'POST' '/api/question-banks' @{name='基础资料'}
+$item = Write-Api 'POST' "/api/question-banks/$($bank.id)/items" @{versionId=$vid}
+$item = Write-Api 'PATCH' "/api/question-banks/$($bank.id)/items/$($item.id)" @{
+    versionId=$v2.id; editRevision=$item.editRevision
+}
+# 分类条目换版不改$s的任何位置。
+$all = Invoke-RestMethod "$base/api/question-versions/$vid/stats" -WebSession $web
+$one = Invoke-RestMethod "$base/api/question-versions/$vid/stats?surveyId=$($s.id)" -WebSession $web
+$detail = Invoke-RestMethod "$base/api/question-versions/$vid/contents?skip=0&limit=20" -WebSession $web
+$distribution = Invoke-RestMethod "$base/api/question-versions/$vid/distribution?skip=0&limit=20" -WebSession $web
+$share = Write-Api 'DELETE' "/api/question-versions/$vid/shares/$($share.recipientId)" @{
+    editRevision=$share.editRevision
+}
+```
+
+若只有一份答卷在同版两个位置分别答10、20，摘要应为answerCount=2、responseCount=1、respondentCount=1、average="15"；明细有两个不同entryId，分布为10/20各1条。授权接收者用自己的会话调用derive，输入例如`{"name":"我的年龄题","creationKey":"derive-example-001"}`；若已撤销且尚未准入，返回404，而已拥有派生题及本人的卷内快照继续可用。
+
 ## 如何理解错误
 
 | 状态 | 含义及处理 |
@@ -237,7 +289,9 @@ $s = Write-Api 'POST' "/api/surveys/$($s.id)/questions/$($s.questions[0].id)/upg
 | api、boot、account | ErrorOut、SessionOut | 错误兼容字符串和数组；user先判断null；csrf用于后续写请求 |
 | list、renderEditor、collect、save | SurveySummaryOut、SurveyOut及嵌套题目 | 列表不读questions；编辑只使用完整问卷；写操作后使用返回的最新版本；选择题options及规则数组始终存在 |
 | reusableList、reusableEditor、reusableDetailPage | ReusableOut、VersionOut、HistoryOut | latestVersion/draft/pendingSave先判null；待恢复项未形成首版时不可选；历史节点先判accessible，不假设来源可读 |
-| picker、rq-pick、rq-upgrade-picker、intent | VersionOut、SurveyOut及idMap | 选准确版本，选入后用服务端返回的卷内ID；固定内容只读，必答/跳转另配；失败重发同一意图保留请求键，不把版本ID当答案questionId |
+| picker、sharedPage、bankItemsPage、rq-pick、rq-upgrade-picker、intent | VersionOut、SurveyOut及idMap | 选准确版本，选入后用服务端返回的卷内ID；固定内容只读，必答/跳转另配；失败重发同一意图保留请求键，不把版本ID当答案questionId |
+| sharesPage、banksPage、bankItemsPage | ShareOut、BankOut、BankItemOut | 共享/题库/条目使用各自editRevision；受限条目先判accessible和selectable，不读取null version |
+| usagePage、crossPage、crossRows | UsagesOut、CrossStatsOut及明细/分布包装 | 三计数分别显示；问卷范围重置分页；明细用entryId区分重复位置，分页只换当前面板；内容及数字摘要先判null |
 | startFill、renderFill、constraintText、answerText | FillOut或PreviewOut.survey、Question | 两种survey共同部分可用于渲染，预览不得读取deadline或definitionVersion；validation未设值用null默认处理 |
 | nextAnswer、revise | WalkOut或PreviewOut.walk | preview多一层walk包装；nextQuestionId=null进入确认，path用于返回修改；不将ready当成保存成功 |
 | submit-answer | SubmitOut | 当前页面只依据HTTP成功展示提交成功，不读取message或responseId；这些字段仍供调用者和重试使用 |

@@ -1,0 +1,34 @@
+{
+  "case": "T24-correctness",
+  "database": "survey_course_test_5be6819d4c2e4d00a934c2d07d2fbb43",
+  "passed": true,
+  "requestFailures": [],
+  "baseCommit": "cbaec6a66fc4572411c2818be221c124ebd13f5c",
+  "testSourceSha256": "40a777cba2da7da388294e94602e319dcb90b92f7bd87a517fbb0f5d01de309f",
+  "timingScope": "test body; excludes env fixture setup and cleanup; seconds",
+  "preparationSeconds": 20.92,
+  "submitAndRetrySeconds": 1.981,
+  "accounts": 100,
+  "workerLimit": 10,
+  "observedPeakActiveWorkers": 10,
+  "firstSuccessful": 100,
+  "retrySuccessful": 100,
+  "storedResponses": 100,
+  "uniqueRespondents": 100,
+  "sameKeyReplayAdded": 0,
+  "accountAnswerMapping": "exact match",
+  "statistics": {
+    "single": [
+      50,
+      50,
+      0
+    ],
+    "multiple": [
+      50,
+      75,
+      25
+    ],
+    "average": "49.5"
+  },
+  "elapsedSeconds": 23.062
+}

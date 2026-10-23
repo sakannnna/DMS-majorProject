@@ -181,3 +181,114 @@ class HistoryOut(Output):
     nodes: list[HistoryNode]
     hasMore: bool
     nextVersionId: str | None
+
+
+class RemovalOut(Output):
+    message: str
+
+
+class ShareOut(Output):
+    id: str
+    versionId: str
+    recipientId: str
+    username: str
+    active: bool
+    editRevision: int
+    createdAt: str
+    revokedAt: str | None = None
+
+
+class SharedVersionOut(Output):
+    version: VersionOut
+    owner: str
+
+
+class BankOut(Output):
+    id: str
+    name: str
+    archived: bool
+    editRevision: int
+    createdAt: str
+    updatedAt: str
+
+
+class BankItemOut(Output):
+    id: str
+    bankId: str
+    questionId: str
+    selectedVersionId: str
+    editRevision: int
+    accessible: bool
+    selectable: bool
+    version: VersionOut | None
+    createdAt: str
+    updatedAt: str
+
+
+class UsageOut(Output):
+    surveyId: str
+    title: str
+    status: str
+    versionId: str
+    questionIds: list[str]
+    occurrenceCount: int
+
+
+class UsagesOut(Output):
+    scope: Literal["ownedSurveys"]
+    items: list[UsageOut]
+    skip: int
+    limit: int
+    hasMore: bool
+
+
+class CrossCounts(Output):
+    answerCount: int
+    responseCount: int
+    respondentCount: int
+
+
+class CrossOptionOut(CrossCounts):
+    id: str
+    label: str
+
+
+class CrossStatsOut(CrossCounts):
+    versionId: str
+    scope: Literal["ownedSurveys"]
+    surveyIds: list[str]
+    title: str
+    kind: Literal["single", "multiple", "text", "number"]
+    options: list[CrossOptionOut]
+    average: str | None
+    minimum: str | None
+    maximum: str | None
+
+
+class CrossContentOut(Output):
+    entryId: str
+    surveyId: str
+    surveyTitle: str
+    questionId: str
+    value: str
+    author: str
+    submittedAt: str
+
+
+class CrossContentsOut(Output):
+    items: list[CrossContentOut]
+    skip: int
+    limit: int
+    hasMore: bool
+
+
+class DistributionRow(Output):
+    value: str
+    answerCount: int
+
+
+class DistributionOut(Output):
+    items: list[DistributionRow]
+    skip: int
+    limit: int
+    hasMore: bool

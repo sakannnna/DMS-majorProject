@@ -1,4 +1,4 @@
-"""Owned reusable questions and immutable versions; no sharing or statistics here."""
+"""Reusable questions, immutable versions and exact-version read authorization."""
 import copy
 import hashlib
 import json
@@ -48,10 +48,18 @@ def owned_question(db, qid, user):
     return q
 
 
+def can_read_version(db, v, user):
+    if not v:
+        return False
+    q = db.reusableQuestions.find_one({"_id": v["questionId"]})
+    return bool(q and (q["ownerId"] == user["_id"] or db.questionShares.find_one(
+        {"versionId": v["_id"], "recipientId": user["_id"], "active": True})))
+
+
 def readable_version(db, vid, user, selecting=False):
     v = db.questionVersions.find_one({"_id": object_id(vid)})
-    q = owned_question(db, v["questionId"], user) if v else None
-    if not q:
+    q = db.reusableQuestions.find_one({"_id": v["questionId"]}) if v else None
+    if not q or not can_read_version(db, v, user):
         fail("版本不存在或无权访问", 404)
     if selecting and q["archived"]:
         fail("题目已归档，不能新增选用或派生", 409)
@@ -272,7 +280,7 @@ def version_history(vid: str, request: Request, user=Depends(current_user)):
             current = None
             break
         v = db.questionVersions.find_one({"_id": parent})
-        if not v or not db.reusableQuestions.find_one({"_id": v["questionId"], "ownerId": user["_id"]}):
+        if not can_read_version(db, v, user):
             nodes.append({"versionId": str(parent), "accessible": False})
             current = None
             break

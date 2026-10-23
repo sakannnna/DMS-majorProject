@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="0" skipped="0" tests="102" time="1119.977" timestamp="2026-10-23T19:30:53.326649+08:00" hostname="faint"><testcase classname="tests.test_system" name="test_T01_account_permissions_csrf_session" time="0.854" /><testcase classname="tests.test_system" name="test_T02_lifecycle_frozen_settings_and_metadata" time="0.775" /><testcase classname="tests.test_system" name="test_T03_add_edit_questions_preview_and_concurrency" time="1.068" /><testcase classname="tests.test_system" name="test_T04_invalid_definition[questions0]" time="0.002" /><testcase classname="tests.test_system" name="test_T04_invalid_definition[questions1]" time="0.002" /><testcase classname="tests.test_system" name="test_T04_invalid_definition[questions2]" time="0.002" /><testcase classname="tests.test_system" name="test_T04_invalid_definition[questions3]" time="0.002" /><testcase classname="tests.test_system" name="test_T04_invalid_definition[questions4]" time="0.002" /><testcase classname="tests.test_system" name="test_T04_invalid_definition[questions5]" time="0.002" /><testcase classname="tests.test_system" name="test_T04_invalid_definition[questions6]" time="0.002" /><testcase classname="tests.test_system" name="test_T04_invalid_definition[questions7]" time="0.002" /><testcase classname="tests.test_system" name="test_T04_invalid_definition[questions8]" time="0.002" /><testcase classname="tests.test_system" name="test_T04_invalid_definition[questions9]" time="0.002" /><testcase classname="tests.test_system" name="test_T05_validation[single-validation0-a-True]" time="0.002" /><testcase classname="tests.test_system" name="test_T05_validation[single-validation1-bad-False]" time="0.002" /><testcase classname="tests.test_system" name="test_T05_validation[single-validation2-None-False]" time="0.002" /><testcase classname="tests.test_system" name="test_T05_validation[multiple-validation3-value3-True]" time="0.002" /><testcase classname="tests.test_system" name="test_T05_validation[multiple-validation4-value4-False]" time="0.002" /><testcase classname="tests.test_system" name="test_T05_validation[multiple-validation5-value5-False]" time="0.003" /><testcase classname="tests.test_system" name="test_T05_validation[multiple-validation6-value6-False]" time="0.002" /><testcase classname="tests.test_system" name="test_T05_validation[multiple-validation7-value7-False]" time="0.002" /><testcase classname="tests.test_system" name="test_T05_validation[text-validation8-  \u4e2d\u6587  -True]" time="0.002" /><testcase classname="tests.test_system" name="test_T05_validation[text-validation9-\u5b57-False]" time="0.003" /><testcase classname="tests.test_system" name="test_T05_validation[text-validation10-\u56db\u4e2a\u6c49\u5b57-False]" time="0.002" /><testcase classname="tests.test_system" name="test_T05_validation[number-validation11-0-True]" time="0.003" /><testcase classname="tests.test_system" name="test_T05_validation[number-validation12-120-True]" time="0.003" /><testcase classname="tests.test_system" name="test_T05_validation[number-validation13-121-False]" time="0.003" /><testcase classname="tests.test_system" name="test_T05_validation[number-validation14--1-False]" time="0.003" /><testcase classname="tests.test_system" name="test_T05_validation[number-validation15-1.5-False]" time="0.002" /><testcase classname="tests.test_system" name="test_T05_validation[number-validation16-NaN-False]" time="0.003" /><testcase classname="tests.test_system" name="test_T05_validation[number-validation17-Infinity-False]" time="0.002" /><testcase classname="tests.test_system" name="test_T05_validation[number-validation18-abc-False]" time="0.002" /><testcase classname="tests.test_system" name="test_T05_validation[number-validation19-1e9999-False]" time="0.002" /><testcase classname="tests.test_system" name="test_T06_jump_first_match_end_and_unmatched[single-a-conditions0]" time="0.005" /><testcase classname="tests.test_system" name="test_T06_jump_first_match_end_and_unmatched[multiple-value1-conditions1]" time="0.003" /><testcase classname="tests.test_system" name="test_T06_jump_first_match_end_and_unmatched[multiple-value2-conditions2]" time="0.004" /><testcase classname="tests.test_system" name="test_T06_jump_first_match_end_and_unmatched[number-20-conditions3]" time="0.003" /><testcase classname="tests.test_system" name="test_T07_end_confirmation_does_not_submit" time="1.174" /><testcase classname="tests.test_system" name="test_T08_submission_retry_anonymity_and_statistics" time="1001.953"><error message="failed on setup with &quot;pymongo.errors._OperationCancelled: operation cancelled&quot;">@pytest.fixture
+    def env():
+        client = MongoClient(os.getenv("MONGODB_URI", "mongodb://127.0.0.1:27019"), tz_aware=True, serverSelectionTimeoutMS=3000)
+        name = "survey_course_test_" + uuid.uuid4().hex
+        db = client[name]
+        app = create_app(db)
+&gt;       with TestClient(app):
+             ^^^^^^^^^^^^^^^
+
+tests\test_system.py:49: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\starlette\testclient.py:511: in __enter__
+    portal.call(self.wait_startup)
+.venv\Lib\site-packages\anyio\from_thread.py:340: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\black\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+C:\Users\black\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+.venv\Lib\site-packages\anyio\from_thread.py:265: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\starlette\testclient.py:546: in wait_startup
+    await receive()
+.venv\Lib\site-packages\starlette\testclient.py:537: in receive
+    self.task.result()
+C:\Users\black\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+C:\Users\black\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+.venv\Lib\site-packages\anyio\from_thread.py:265: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\starlette\testclient.py:527: in lifespan
+    await self.app(scope, self.stream_receive.receive, self.stream_send.send)
+.venv\Lib\site-packages\fastapi\applications.py:1203: in __call__
+    await lifespan(
+.venv\Lib\site-packages\fastapi\telemetry\_runtime.py:238: in lifespan
+    await app(scope, wrapped_receive, wrapped_send)
+.venv\Lib\site-packages\starlette\applications.py:96: in __call__
+    await self.middleware_stack(scope, receive, send)
+.venv\Lib\site-packages\starlette\middleware\errors.py:151: in __call__
+    await self.app(scope, receive, send)
+.venv\Lib\site-packages\fastapi\telemetry\_asgi.py:151: in __call__
+    await self.app(scope, receive, send)
+.venv\Lib\site-packages\starlette\middleware\base.py:103: in __call__
+    await self.app(scope, receive, send)
+.venv\Lib\site-packages\starlette\middleware\exceptions.py:49: in __call__
+    await self.app(scope, receive, send)
+.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+.venv\Lib\site-packages\starlette\routing.py:676: in __call__
+    await self.middleware_stack(scope, receive, send)
+.venv\Lib\site-packages\fastapi\routing.py:2778: in app
+    await self.lifespan(scope, receive, send)
+.venv\Lib\site-packages\starlette\routing.py:654: in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\black\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\fastapi\routing.py:247: in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ^^^^^^^^^^^^^^^^^^^^^
+C:\Users\black\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\fastapi\routing.py:247: in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ^^^^^^^^^^^^^^^^^^^^^
+C:\Users\black\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+app\main.py:114: in lifespan
+    await run_in_threadpool(initialize, app.state.db)
+.venv\Lib\site-packages\starlette\concurrency.py:34: in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\anyio\to_thread.py:65: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+.venv\Lib\site-packages\anyio\_backends\_asyncio.py:2706: in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+.venv\Lib\site-packages\anyio\_backends\_asyncio.py:1100: in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+app\database.py:128: in initialize
+    install(db, existing)
+app\database.py:113: in install
+    db.questionShares.create_index([("recipientId", 1), ("active", 1), ("versionId", 1)])
+.venv\Lib\site-packages\pymongo\synchronous\collection.py:2369: in create_index
+    return (self._create_indexes([index], session, **cmd_options))[0]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\pymongo\_csot.py:126: in csot_wrapper
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\pymongo\synchronous\collection.py:2251: in _create_indexes
+    return self.database.client._retryable_write(False, inner, session, _Op.CREATE_INDEXES)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\pymongo\synchronous\mongo_client.py:2154: in _retryable_write
+    return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\pymongo\synchronous\mongo_client.py:2024: in _retry_with_session
+    return self._retry_internal(
+.venv\Lib\site-packages\pymongo\_csot.py:126: in csot_wrapper
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\pymongo\synchronous\mongo_client.py:2077: in _retry_internal
+    ).run()
+      ^^^^^
+.venv\Lib\site-packages\pymongo\synchronous\mongo_client.py:2947: in run
+    res = self._read() if self._is_read else self._write()
+                                             ^^^^^^^^^^^^^
+.venv\Lib\site-packages\pymongo\synchronous\mongo_client.py:3160: in _write
+    return self._func(self._session, conn, self._retryable)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\pymongo\synchronous\collection.py:2241: in inner
+    self._command(
+.venv\Lib\site-packages\pymongo\synchronous\collection.py:600: in _command
+    return conn.command(
+.venv\Lib\site-packages\pymongo\synchronous\helpers.py:50: in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\pymongo\synchronous\pool.py:430: in command
+    self._raise_connection_failure(error)
+.venv\Lib\site-packages\pymongo\synchronous\pool.py:576: in _raise_connection_failure
+    raise error
+.venv\Lib\site-packages\pymongo\synchronous\pool.py:405: in command
+    return run_command(
+.venv\Lib\site-packages\pymongo\synchronous\command_runner.py:440: in run_command
+    docs, _, _ = _run_command(
+.venv\Lib\site-packages\pymongo\synchronous\command_runner.py:192: in _run_command
+    reply = conn.receive_message(request_id)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\pymongo\synchronous\pool.py:458: in receive_message
+    self._raise_connection_failure(error)
+.venv\Lib\site-packages\pymongo\synchronous\pool.py:576: in _raise_connection_failure
+    raise error
+.venv\Lib\site-packages\pymongo\synchronous\pool.py:455: in receive_message
+    return receive_message(self, request_id, self.max_message_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\pymongo\network_layer.py:748: in receive_message
+    length, _, response_to, op_code = _UNPACK_HEADER(receive_data(conn, 16, deadline))
+                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\pymongo\network_layer.py:321: in receive_data
+    wait_for_read(conn, deadline)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+conn = Connection(&lt;pymongo.network_layer.NetworkingInterface object at 0x0000025BB75CFE00&gt;) CLOSED at 2592941604304
+deadline = None
+
+    def wait_for_read(conn: Connection, deadline: Optional[float]) -&gt; None:
+        """Block until at least one byte is read, or a timeout, or a cancel."""
+        sock = conn.conn.sock
+        timed_out = False
+        # Check if the connection's socket has been manually closed
+        if sock.fileno() == -1:
+            return
+        while True:
+            # SSLSocket can have buffered data which won't be caught by select.
+            if hasattr(sock, "pending") and sock.pending() &gt; 0:
+                readable = True
+            else:
+                # Wait up to 500ms for the socket to become readable and then
+                # check for cancellation.
+                if deadline:
+                    remaining = deadline - time.monotonic()
+                    # When the timeout has expired perform one final check to
+                    # see if the socket is readable. This helps avoid spurious
+                    # timeouts on AWS Lambda and other FaaS environments.
+                    if remaining &lt;= 0:
+                        timed_out = True
+                    timeout = max(min(remaining, _POLL_TIMEOUT), 0)
+                else:
+                    timeout = _POLL_TIMEOUT
+                readable = conn.socket_checker.select(sock, read=True, timeout=timeout)
+            if conn.cancel_context.cancelled:
+&gt;               raise _OperationCancelled("operation cancelled")
+E               pymongo.errors._OperationCancelled: operation cancelled
+
+.venv\Lib\site-packages\pymongo\network_layer.py:297: _OperationCancelled</error></testcase><testcase classname="tests.test_system" name="test_T09_concurrent_one_user_and_multiple_users" time="1.179" /><testcase classname="tests.test_system" name="test_T10_empty_stats_no_anonymous_and_schema" time="0.623" /><testcase classname="tests.test_system" name="test_T11_unknown_duplicate_and_missing_answers" time="0.657" /><testcase classname="tests.test_system" name="test_T12_optional_empty_and_zero" time="0.001" /><testcase classname="tests.test_system" name="test_T15_restart_preserves_data_and_indexes" time="0.747" /><testcase classname="tests.test_system" name="test_T16_expired_session_origin_and_request_size" time="0.991" /><testcase classname="tests.test_system" name="test_T17_concurrent_same_key_retry" time="0.916" /><testcase classname="tests.test_system" name="test_T18_skipped_required_question_and_stats" time="0.836" /><testcase classname="tests.test_system" name="test_T19_response_contracts_and_frontend_fields" time="1.860" /><testcase classname="tests.test_system" name="test_T20_old_initializer_does_not_overwrite_future_schema[False]" time="1.197" /><testcase classname="tests.test_system" name="test_T20_old_initializer_does_not_overwrite_future_schema[True]" time="1.131" /><testcase classname="tests.test_system" name="test_T22_statistics_pages_no_duplicates_or_omissions" time="1.784" /><testcase classname="tests.test_system" name="test_T23_complete_flow_smoke" time="2.328" /><testcase classname="tests.test_system" name="test_T24_hundred_accounts_submission_correctness" time="32.410" /><testcase classname="tests.test_system" name="test_T26_config_bounds_reject_without_writes[create-1e6145-minimum]" time="1.117" /><testcase classname="tests.test_system" name="test_T26_config_bounds_reject_without_writes[create-1e6145-maximum]" time="1.017" /><testcase classname="tests.test_system" name="test_T26_config_bounds_reject_without_writes[create-1e-6177-minimum]" time="1.069" /><testcase classname="tests.test_system" name="test_T26_config_bounds_reject_without_writes[create-1e-6177-maximum]" time="1.058" /><testcase classname="tests.test_system" name="test_T26_config_bounds_reject_without_writes[create-1.2345678901234567890123456789012345-minimum]" time="1.147" /><testcase classname="tests.test_system" name="test_T26_config_bounds_reject_without_writes[create-1.2345678901234567890123456789012345-maximum]" time="1.140" /><testcase classname="tests.test_system" name="test_T26_config_bounds_reject_without_writes[update-1e6145-minimum]" time="1.122" /><testcase classname="tests.test_system" name="test_T26_config_bounds_reject_without_writes[update-1e6145-maximum]" time="1.321" /><testcase classname="tests.test_system" name="test_T26_config_bounds_reject_without_writes[update-1e-6177-minimum]" time="1.264" /><testcase classname="tests.test_system" name="test_T26_config_bounds_reject_without_writes[update-1e-6177-maximum]" time="1.064" /><testcase classname="tests.test_system" name="test_T26_config_bounds_reject_without_writes[update-1.2345678901234567890123456789012345-minimum]" time="1.015" /><testcase classname="tests.test_system" name="test_T26_config_bounds_reject_without_writes[update-1.2345678901234567890123456789012345-maximum]" time="1.056" /><testcase classname="tests.test_system" name="test_T26_legal_config_bounds_exact_storage[bounds0]" time="1.036" /><testcase classname="tests.test_system" name="test_T26_legal_config_bounds_exact_storage[bounds1]" time="1.221" /><testcase classname="tests.test_system" name="test_T26_legal_config_bounds_exact_storage[bounds2]" time="1.047" /><testcase classname="tests.test_system" name="test_T26_legal_config_bounds_exact_storage[bounds3]" time="1.026" /><testcase classname="tests.test_system" name="test_T26_other_config_bounds_reject_huge_integer[minChoices]" time="1.182" /><testcase classname="tests.test_system" name="test_T26_other_config_bounds_reject_huge_integer[maxChoices]" time="1.062" /><testcase classname="tests.test_system" name="test_T26_other_config_bounds_reject_huge_integer[minLength]" time="1.074" /><testcase classname="tests.test_system" name="test_T26_other_config_bounds_reject_huge_integer[maxLength]" time="0.995" /><testcase classname="tests.test_system" name="test_T27_submission_counts_and_distinct_accounts" time="2.225" /><testcase classname="tests.test_system" name="test_T28_version_instances_submission_and_old_snapshot" time="1.739" /><testcase classname="tests.test_system" name="test_T29_branch_restore_immutable_retry_permissions" time="1.778" /><testcase classname="tests.test_system" name="test_T30_upgrade_validates_rules_atomically[False]" time="1.273" /><testcase classname="tests.test_system" name="test_T30_upgrade_validates_rules_atomically[True]" time="1.264" /><testcase classname="tests.test_system" name="test_T31_interrupted_save_recover_without_original_request[insert]" time="1.338" /><testcase classname="tests.test_system" name="test_T31_interrupted_save_recover_without_original_request[cleanup]" time="1.463" /><testcase classname="tests.test_system" name="test_T32_consistent_identity_retry_and_archival[False]" time="1.333" /><testcase classname="tests.test_system" name="test_T32_consistent_identity_retry_and_archival[True]" time="1.359" /><testcase classname="tests.test_system" name="test_T33_explicit_upgrade_preserves_legacy_data_and_exports" time="3.101" /><testcase classname="tests.test_system" name="test_T33_new_program_rejects_unknown_schema_without_mutation[version]" time="1.088" /><testcase classname="tests.test_system" name="test_T33_new_program_rejects_unknown_schema_without_mutation[validator]" time="1.135" /><testcase classname="tests.test_system" name="test_T30_delete_referenced_position_requires_atomic_rule_update[False]" time="1.289" /><testcase classname="tests.test_system" name="test_T30_delete_referenced_position_requires_atomic_rule_update[True]" time="1.290" /><testcase classname="tests.test_system" name="test_T29_concurrent_version_save_same_key" time="1.268" /><testcase classname="tests.test_system" name="test_T31_damaged_pending_is_visible_but_not_committed" time="1.314" /><testcase classname="tests.test_system" name="test_T32_instance_limit_returns_validation_error_without_write" time="1.289" /><testcase classname="tests.test_system" name="test_T35_shared_revoke_preserves_existing_but_blocks_new[False]" time="2.592" /><testcase classname="tests.test_system" name="test_T35_shared_revoke_preserves_existing_but_blocks_new[True]" time="2.147" /><testcase classname="tests.test_system" name="test_T36_bank_versions_restricted_placeholders_and_ownership" time="1.460" /><testcase classname="tests.test_system" name="test_T37_exact_numeric_aggregation_scope_pagination" time="2.156" /><testcase classname="tests.test_system" name="test_T38_option_counts_are_entries_responses_accounts[single]" time="1.135" /><testcase classname="tests.test_system" name="test_T38_option_counts_are_entries_responses_accounts[multiple]" time="1.279" /><testcase classname="tests.test_system" name="test_T39_empty_text_numeric_group_and_contracts" time="1.119" /><testcase classname="tests.test_system" name="test_T40_part_one_database_requires_explicit_expansion" time="1.124" /><testcase classname="tests.test_system" name="test_T35_revocation_recovery_and_last_authorization_admission[False]" time="1.156" /><testcase classname="tests.test_system" name="test_T35_revocation_recovery_and_last_authorization_admission[True]" time="1.178" /><testcase classname="tests.test_system" name="test_T40_part_one_program_rejects_later_collections" time="0.972" /><testcase classname="tests.test_system" name="test_T36_archived_question_and_exact_history_scope" time="1.329" /></testsuite></testsuites>

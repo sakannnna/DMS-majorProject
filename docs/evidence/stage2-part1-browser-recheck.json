@@ -1,0 +1,129 @@
+{
+  "date": "2026-10-23",
+  "baseCommit": "cbaec6a66fc4572411c2818be221c124ebd13f5c",
+  "sourceSha256": {
+    "app/static/app.js": "d40e49dd2d1f42e808511d82caea41ba0c3fc394ec73a8b33f6f5ae2444e62fb",
+    "app/main.py": "2ae0639f3792187145ebf4be81c7672039afe7e50705aa5bed559f30663680d4",
+    "app/reusable.py": "281ec5fdb3379a132a776e194ea962f10db749c0a718e3890a2fc2f72ad2fd42",
+    "app/survey_questions.py": "2700afdf1b6fdc8fc50f2e1f609c6ff9e8c63d10ff8bdcd9d0594ac23f7dbc3d",
+    "app/database.py": "3a52bf786161f85716f206a9c72990f527b693ea67dcd7500080c3ad17b845bc",
+    "app/contracts.py": "685415115cef982294cbd912e5a41327bbda555ef1ded80f42e6b2b8daef0e8c",
+    "app/models.py": "13ba448d3726142d519120b4a601d36c0d1d0d72830572f0ae38450c67d41695",
+    "app/logic.py": "2bab3e7d86b8985a6aaa1321f777ddf537fce3a8e9337ec05eadb53c73ec2991"
+  },
+  "database": "survey_course_test_e694fca1c9ce4b0fa12c9f7a54ec8cf1",
+  "port": 8013,
+  "method": "AI operated actual in-app browser. Only account prepared by API; interrupted save explicitly injected through existing new_question function. Final MongoDB assertions independently executed.",
+  "failureAndFix": {
+    "observed": "新建题目: prompt() is not supported. No root created.",
+    "fix": "Use in-page HTML name dialog for new question and save-as-reusable.",
+    "retest": "New question, both exports, and cancel passed.",
+    "checkScriptCorrection": "Initial data assertion compared stored source ID string to ObjectId; normalize expected ID to string, rerun passed. This was a checking-script error, not an application failure."
+  },
+  "expectedBeforeExecution": {
+    "versions": "V2/V3/V4 parent V1; V4 content equals V1; no overwrite.",
+    "positions": "Distinct local IDs; first V1, second V2; rule any A to END on first only.",
+    "path": "First B then second A gives two confirmation answers; change first to A gives only first at confirmation; no saved response until explicit submit.",
+    "stats": "1 response,1 account; first answered1 A1 B0; second answered0 A0 B0.",
+    "export": "New owned V1; original normal position retains ID and no source; no old-answer migration.",
+    "recovery": "No version before injected recovery; browser creates exactly V1 and clears pending."
+  },
+  "actual": {
+    "versions": [
+      {
+        "id": "6adb3dce9b9820f5365a5685",
+        "no": 1,
+        "parent": null,
+        "title": "选择课程"
+      },
+      {
+        "id": "6adb3dcf9b9820f5365a5686",
+        "no": 2,
+        "parent": "6adb3dce9b9820f5365a5685",
+        "title": "选择课程V2"
+      },
+      {
+        "id": "6adb3dcf9b9820f5365a5687",
+        "no": 3,
+        "parent": "6adb3dce9b9820f5365a5685",
+        "title": "选择课程分支"
+      },
+      {
+        "id": "6adb3dd39b9820f5365a5688",
+        "no": 4,
+        "parent": "6adb3dce9b9820f5365a5685",
+        "title": "选择课程"
+      }
+    ],
+    "positions": [
+      {
+        "id": "rf6aebd16241d98ed823397497aa9e8d00e8ca59dbe2db164",
+        "sourceVersionId": "6adb3dce9b9820f5365a5685",
+        "jumpRules": [
+          {
+            "conditions": [
+              {
+                "op": "any",
+                "value": [
+                  "41c810f1db6749528eb044678de35c2f"
+                ]
+              }
+            ],
+            "target": "END"
+          }
+        ]
+      },
+      {
+        "id": "r0b9f500c0e22d4f1a962ef75a6f13499a3cc6f1cda7911fa",
+        "sourceVersionId": "6adb3dcf9b9820f5365a5686",
+        "jumpRules": []
+      }
+    ],
+    "responsesBeforeExplicitSubmit": 0,
+    "responsesAfter": 1,
+    "savedAnswers": [
+      {
+        "questionId": "rf6aebd16241d98ed823397497aa9e8d00e8ca59dbe2db164",
+        "value": [
+          "41c810f1db6749528eb044678de35c2f"
+        ]
+      }
+    ],
+    "webStats": {
+      "responses": 1,
+      "accounts": 1,
+      "first": {
+        "answered": 1,
+        "A": 1,
+        "B": 0
+      },
+      "second": {
+        "answered": 0,
+        "A": 0,
+        "B": 0
+      }
+    },
+    "recoveryVersionCount": 1,
+    "recoveryPendingCleared": true,
+    "normalPositionId": "46537ae1758049249c55cb11741cc9a4",
+    "normalPositionStillWithoutSource": true,
+    "rootCountAfterCancelAndAllOperations": 4,
+    "allAssertionsPassed": true
+  },
+  "screenshots": [
+    "stage2-part1-browser-recheck.png",
+    "stage2-part1-browser-versions.png"
+  ],
+  "notExecuted": [
+    "Not a rerun of all 90 Python tests.",
+    "No sharing, question banks or cross-survey statistics: outside implemented scope.",
+    "No multi-browser or pressure-limit checks.",
+    "Normal export used a new ordinary position; old-schema migration remains covered by prior T33, not rerun here.",
+    "Delete/re-add and same-key retry covered by prior T32, not operated in this browser batch."
+  ],
+  "cleanup": {
+    "tabClosed": true,
+    "serverStopped": true,
+    "isolatedDatabaseDropped": true
+  }
+}
