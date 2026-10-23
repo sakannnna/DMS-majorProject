@@ -1,0 +1,48 @@
+{
+  "database": "survey_course_test_fb3440c21bfd4c469e61dd7cbd52715a",
+  "questionId": "6adb1ac141d2da086fa79ab7",
+  "port": 8012,
+  "versions": [
+    {
+      "id": "6adb1b8c909694b907282966",
+      "versionNo": 1,
+      "parentVersionId": null
+    },
+    {
+      "id": "6adb1bc0909694b907282967",
+      "versionNo": 2,
+      "parentVersionId": "6adb1b8c909694b907282966"
+    },
+    {
+      "id": "6adb1bd4909694b907282968",
+      "versionNo": 3,
+      "parentVersionId": "6adb1b8c909694b907282966"
+    }
+  ],
+  "surveyId": "6adb1be4909694b907282969",
+  "localQuestionIds": [
+    "r14ff421e685823b413fe4f93185c410f06ffd3b81d761fc1",
+    "r00620f313ec8c37df5aaf169f8fb4deb82752373ef17e8a7"
+  ],
+  "sourceVersionIds": [
+    "6adb1bc0909694b907282967",
+    "6adb1b8c909694b907282966"
+  ],
+  "required": [
+    true,
+    false
+  ],
+  "storedResponses": 1,
+  "values": [
+    "10",
+    "20"
+  ],
+  "responseCountBeforeExplicitSubmit": 0,
+  "observedPageAverages": [
+    "10",
+    "20"
+  ],
+  "anonymous": true,
+  "method": "API prepared owner and empty reusable root; actual browser configured/saved versions, selected/upgraded positions, submitted and viewed stats; DB independently checked",
+  "cleanup": "isolated web DB removed; temporary web service stopped"
+}

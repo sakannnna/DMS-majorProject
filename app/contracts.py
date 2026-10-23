@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .models import Option, Question
+from .models import Option, Question, ManagedQuestion, QuestionContent
 
 
 class Output(BaseModel):
@@ -46,13 +46,18 @@ class SurveySummaryOut(Output):
 
 
 class SurveyOut(SurveySummaryOut):
-    questions: list[Question]
+    questions: list[ManagedQuestion]
+    idMap: dict[str, str] = Field(default_factory=dict)
+
+
+class PublicQuestion(Question):
+    model_config = ConfigDict(extra="ignore")
 
 
 class PreviewSurveyOut(Output):
     title: str
     description: str
-    questions: list[Question]
+    questions: list[PublicQuestion]
     allowAnonymous: bool
     allowMultiple: bool
 
@@ -130,3 +135,49 @@ class ValidationIssueOut(Output):
 
 class ErrorOut(Output):
     detail: str | list[ValidationIssueOut]
+
+
+class VersionOut(Output):
+    id: str
+    questionId: str
+    versionNo: int
+    parentVersionId: str | None
+    content: QuestionContent
+    createdAt: str
+
+
+class DraftOut(Output):
+    baseVersionId: str | None
+    content: QuestionContent
+
+
+class PendingOut(Output):
+    operationId: str | None
+    versionId: str | None
+    versionNo: int | None
+    content: QuestionContent | None
+    needsRepair: bool
+
+
+class ReusableOut(Output):
+    id: str
+    name: str
+    archived: bool
+    editRevision: int
+    draft: DraftOut | None
+    pendingSave: PendingOut | None
+    latestVersion: VersionOut | None
+    createdAt: str
+    updatedAt: str
+
+
+class HistoryNode(Output):
+    versionId: str
+    accessible: bool
+    version: VersionOut | None = None
+
+
+class HistoryOut(Output):
+    nodes: list[HistoryNode]
+    hasMore: bool
+    nextVersionId: str | None

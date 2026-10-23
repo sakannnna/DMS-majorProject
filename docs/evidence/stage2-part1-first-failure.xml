@@ -1,0 +1,532 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="10" time="5.511" timestamp="2026-10-23T16:21:57.604020+08:00" hostname="faint"><testcase classname="tests.test_system" name="test_T28_version_instances_submission_and_old_snapshot" time="0.330"><failure message="pydantic_core._pydantic_core.ValidationError: 2 validation errors for SurveyInput&#10;questions.0.validation.minimum&#10;  Decimal input should be an integer, float, string or Decimal object [type=decimal_type, input_value=Decimal128('0'), input_type=Decimal128]&#10;    For further information visit https://errors.pydantic.dev/2.14/v/decimal_type&#10;questions.0.validation.maximum&#10;  Decimal input should be an integer, float, string or Decimal object [type=decimal_type, input_value=Decimal128('120'), input_type=Decimal128]&#10;    For further information visit https://errors.pydantic.dev/2.14/v/decimal_type">env = (Database(MongoClient(host=['127.0.0.1:27019'], document_class=dict, tz_aware=True, connect=True, serverselectiontimeo...26e'), &lt;fastapi.applications.FastAPI object at 0x000002222099D400&gt;, &lt;test_system.Browser object at 0x0000022220967E30&gt;)
+
+    def test_T28_version_instances_submission_and_old_snapshot(env):
+        db, app, owner = env
+        q = reusable(owner)
+        v1 = q["latestVersion"]
+&gt;       s, _ = add_to(owner, create(owner, []), v1["id"])
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_system.py:770: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_system.py:756: in add_to
+    r = owner.request("POST", f"/api/surveys/{s['id']}/question-instances", body)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_system.py:35: in request
+    return self.client.request(method, path, json=body) if body is not None else self.client.request(method, path)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\starlette\testclient.py:457: in request
+    return super().request(
+.venv\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+.venv\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+.venv\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\starlette\testclient.py:354: in handle_request
+    raise exc
+.venv\Lib\site-packages\starlette\testclient.py:351: in handle_request
+    portal.call(self.app, scope, receive, send)
+.venv\Lib\site-packages\anyio\from_thread.py:340: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\black\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+C:\Users\black\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+.venv\Lib\site-packages\anyio\from_thread.py:265: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\fastapi\applications.py:1216: in __call__
+    await super().__call__(scope, receive, send)
+.venv\Lib\site-packages\starlette\applications.py:96: in __call__
+    await self.middleware_stack(scope, receive, send)
+.venv\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+.venv\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+.venv\Lib\site-packages\fastapi\telemetry\_asgi.py:151: in __call__
+    await self.app(scope, receive, send)
+.venv\Lib\site-packages\starlette\middleware\base.py:203: in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\main.py:141: in boundaries
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\starlette\middleware\base.py:179: in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+.venv\Lib\site-packages\starlette\middleware\base.py:149: in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+.venv\Lib\site-packages\starlette\middleware\exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+.venv\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+.venv\Lib\site-packages\starlette\routing.py:676: in __call__
+    await self.middleware_stack(scope, receive, send)
+.venv\Lib\site-packages\fastapi\routing.py:2791: in app
+    await route.handle(scope, receive, send)
+.venv\Lib\site-packages\fastapi\routing.py:1310: in handle
+    await super().handle(scope, receive, send)
+.venv\Lib\site-packages\starlette\routing.py:282: in handle
+    await self.app(scope, receive, send)
+.venv\Lib\site-packages\fastapi\routing.py:165: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+.venv\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+.venv\Lib\site-packages\fastapi\routing.py:151: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\fastapi\routing.py:727: in app
+    raw_response = await run_endpoint_function(
+.venv\Lib\site-packages\fastapi\routing.py:362: in run_endpoint_function
+    return await run_in_threadpool(
+.venv\Lib\site-packages\starlette\concurrency.py:34: in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\anyio\to_thread.py:65: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+.venv\Lib\site-packages\anyio\_backends\_asyncio.py:2706: in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+.venv\Lib\site-packages\anyio\_backends\_asyncio.py:1100: in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\fastapi\telemetry\_api.py:244: in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+app\main.py:250: in add_instance
+    return save_definition(db, survey, user, body.editRevision, body.operationKey,
+app\survey_questions.py:79: in save_definition
+    prepared, id_map = normalize_positions(db, survey, user, build(), revision, key)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+db = Database(MongoClient(host=['127.0.0.1:27019'], document_class=dict, tz_aware=True, connect=True, serverselectiontimeoutms=3000), 'survey_course_test_c7660bd2ffee41499baac3ec448bb26e')
+survey = {'_id': ObjectId('6adb19262292b1638ec42a1e'), 'title': '测试问卷', 'description': '', 'allowAnonymous': True, ...}
+user = {'_id': ObjectId('6adb19262292b1638ec42a1a'), 'username': 'owner', 'usernameKey': 'owner', 'passwordHash': '$argon2id$v=19$m=65536,t=3,p=4$EzP87YajJV20s8RxjLGZyg$e+35a2uM3ywQNPLn0ffs/Ai+qnLPsrzcl6yCos5SQf4', ...}
+data = {'title': '测试问卷', 'description': '', 'deadline': None, 'allowAnonymous': True, ...}
+revision = 1, key = '1c1adc6b8cee410ea94fce832b9621ac'
+
+    def normalize_positions(db, survey, user, data, revision, key):
+        previous = {q["id"]: q for q in survey["questions"]}
+        id_map = {}
+        for q in data["questions"]:
+            old = previous.get(q["id"])
+            source, version = q.get("sourceQuestionId"), q.get("sourceVersionId")
+            if bool(source) != bool(version):
+                fail("题目来源和版本必须同时提供")
+            if old and old.get("sourceVersionId"):
+                if source != old["sourceQuestionId"] or not version:
+                    fail("已有可复用位置不能移除来源或换成另一系列")
+                if version == old["sourceVersionId"]:
+                    supplied = prepare_content(QuestionContent(**content_of(q)))
+                    if fingerprint(supplied) != fingerprint(content_of(old)):
+                        fail("版本快照不可编辑，请先保存新版本并主动换版")
+                    q.update(content_of(old))
+                else:
+                    v = readable_version(db, version, user, selecting=True)
+                    if str(v["questionId"]) != source:
+                        fail("目标版本不属于当前题目系列")
+                    q.update(content_of(v["content"]))
+            elif version:
+                if old:
+                    fail("普通题导出不自动绑定原位置，请新增可复用位置")
+                if not key:
+                    fail("新增可复用位置需要operationKey")
+                v = readable_version(db, version, user, selecting=True)
+                if str(v["questionId"]) != source:
+                    fail("版本不属于来源题目")
+                temporary = q["id"]
+                q["id"] = "r" + fingerprint([str(survey["_id"]), revision, key, temporary])[:48]
+                if temporary in id_map:
+                    fail("批内临时位置标识重复")
+                id_map[temporary] = q["id"]
+                q.update(content_of(v["content"]))
+            elif old and old.get("sourceVersionId"):
+                fail("不能删除可复用位置的来源标签")
+        for q in data["questions"]:
+            for rule in q.get("jumpRules", []):
+                rule["target"] = id_map.get(rule["target"], rule["target"])
+&gt;       return prepare_survey(SurveyInput(**data)), id_map
+                              ^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 2 validation errors for SurveyInput
+E       questions.0.validation.minimum
+E         Decimal input should be an integer, float, string or Decimal object [type=decimal_type, input_value=Decimal128('0'), input_type=Decimal128]
+E           For further information visit https://errors.pydantic.dev/2.14/v/decimal_type
+E       questions.0.validation.maximum
+E         Decimal input should be an integer, float, string or Decimal object [type=decimal_type, input_value=Decimal128('120'), input_type=Decimal128]
+E           For further information visit https://errors.pydantic.dev/2.14/v/decimal_type
+
+app\survey_questions.py:59: ValidationError</failure></testcase><testcase classname="tests.test_system" name="test_T29_branch_restore_immutable_retry_permissions" time="0.458" /><testcase classname="tests.test_system" name="test_T30_upgrade_validates_rules_atomically[False]" time="0.319" /><testcase classname="tests.test_system" name="test_T30_upgrade_validates_rules_atomically[True]" time="0.337" /><testcase classname="tests.test_system" name="test_T31_interrupted_save_recover_without_original_request[insert]" time="0.360" /><testcase classname="tests.test_system" name="test_T31_interrupted_save_recover_without_original_request[cleanup]" time="0.343" /><testcase classname="tests.test_system" name="test_T32_consistent_identity_retry_and_archival[False]" time="0.295"><failure message="pydantic_core._pydantic_core.ValidationError: 2 validation errors for SurveyInput&#10;questions.0.validation.minimum&#10;  Decimal input should be an integer, float, string or Decimal object [type=decimal_type, input_value=Decimal128('0'), input_type=Decimal128]&#10;    For further information visit https://errors.pydantic.dev/2.14/v/decimal_type&#10;questions.0.validation.maximum&#10;  Decimal input should be an integer, float, string or Decimal object [type=decimal_type, input_value=Decimal128('120'), input_type=Decimal128]&#10;    For further information visit https://errors.pydantic.dev/2.14/v/decimal_type">env = (Database(MongoClient(host=['127.0.0.1:27019'], document_class=dict, tz_aware=True, connect=True, serverselectiontimeo...243'), &lt;fastapi.applications.FastAPI object at 0x0000022221CA2240&gt;, &lt;test_system.Browser object at 0x00000222213D8C50&gt;)
+whole = False
+
+    @pytest.mark.parametrize("whole", [False, True])
+    def test_T32_consistent_identity_retry_and_archival(env, whole):
+        db, _, owner = env
+        q = reusable(owner)
+        v = q["latestVersion"]
+        s = create(owner, [])
+        if whole:
+            body = whole_body(s, questions=[{"id": "temporary", **v["content"], "sourceQuestionId": q["id"], "sourceVersionId": v["id"]}])
+            path, method = f"/api/surveys/{s['id']}", "PUT"
+        else:
+            body = {"versionId": v["id"], "editRevision": 1, "operationKey": uuid.uuid4().hex}
+            path, method = f"/api/surveys/{s['id']}/question-instances", "POST"
+&gt;       s = owner.request(method, path, body).json()
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_system.py:901: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_system.py:35: in request
+    return self.client.request(method, path, json=body) if body is not None else self.client.request(method, path)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\starlette\testclient.py:457: in request
+    return super().request(
+.venv\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+.venv\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+.venv\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\starlette\testclient.py:354: in handle_request
+    raise exc
+.venv\Lib\site-packages\starlette\testclient.py:351: in handle_request
+    portal.call(self.app, scope, receive, send)
+.venv\Lib\site-packages\anyio\from_thread.py:340: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\black\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+C:\Users\black\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+.venv\Lib\site-packages\anyio\from_thread.py:265: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\fastapi\applications.py:1216: in __call__
+    await super().__call__(scope, receive, send)
+.venv\Lib\site-packages\starlette\applications.py:96: in __call__
+    await self.middleware_stack(scope, receive, send)
+.venv\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+.venv\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+.venv\Lib\site-packages\fastapi\telemetry\_asgi.py:151: in __call__
+    await self.app(scope, receive, send)
+.venv\Lib\site-packages\starlette\middleware\base.py:203: in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\main.py:141: in boundaries
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\starlette\middleware\base.py:179: in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+.venv\Lib\site-packages\starlette\middleware\base.py:149: in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+.venv\Lib\site-packages\starlette\middleware\exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+.venv\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+.venv\Lib\site-packages\starlette\routing.py:676: in __call__
+    await self.middleware_stack(scope, receive, send)
+.venv\Lib\site-packages\fastapi\routing.py:2791: in app
+    await route.handle(scope, receive, send)
+.venv\Lib\site-packages\fastapi\routing.py:1310: in handle
+    await super().handle(scope, receive, send)
+.venv\Lib\site-packages\starlette\routing.py:282: in handle
+    await self.app(scope, receive, send)
+.venv\Lib\site-packages\fastapi\routing.py:165: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+.venv\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+.venv\Lib\site-packages\fastapi\routing.py:151: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\fastapi\routing.py:727: in app
+    raw_response = await run_endpoint_function(
+.venv\Lib\site-packages\fastapi\routing.py:362: in run_endpoint_function
+    return await run_in_threadpool(
+.venv\Lib\site-packages\starlette\concurrency.py:34: in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\anyio\to_thread.py:65: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+.venv\Lib\site-packages\anyio\_backends\_asyncio.py:2706: in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+.venv\Lib\site-packages\anyio\_backends\_asyncio.py:1100: in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\fastapi\telemetry\_api.py:244: in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+app\main.py:250: in add_instance
+    return save_definition(db, survey, user, body.editRevision, body.operationKey,
+app\survey_questions.py:79: in save_definition
+    prepared, id_map = normalize_positions(db, survey, user, build(), revision, key)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+db = Database(MongoClient(host=['127.0.0.1:27019'], document_class=dict, tz_aware=True, connect=True, serverselectiontimeoutms=3000), 'survey_course_test_a7c66b45842a442e821627a497020243')
+survey = {'_id': ObjectId('6adb19292292b1638ec42a49'), 'title': '测试问卷', 'description': '', 'allowAnonymous': True, ...}
+user = {'_id': ObjectId('6adb19292292b1638ec42a45'), 'username': 'owner', 'usernameKey': 'owner', 'passwordHash': '$argon2id$v=19$m=65536,t=3,p=4$c1WbUjGzm9ZjmV/Z4G2PZQ$4FfadtAVyPL6IEOkeylGdfrOAML1XxvAQC/IuzGU6a0', ...}
+data = {'title': '测试问卷', 'description': '', 'deadline': None, 'allowAnonymous': True, ...}
+revision = 1, key = '97d6fdc5fb3f4c71b8e48d012afb3248'
+
+    def normalize_positions(db, survey, user, data, revision, key):
+        previous = {q["id"]: q for q in survey["questions"]}
+        id_map = {}
+        for q in data["questions"]:
+            old = previous.get(q["id"])
+            source, version = q.get("sourceQuestionId"), q.get("sourceVersionId")
+            if bool(source) != bool(version):
+                fail("题目来源和版本必须同时提供")
+            if old and old.get("sourceVersionId"):
+                if source != old["sourceQuestionId"] or not version:
+                    fail("已有可复用位置不能移除来源或换成另一系列")
+                if version == old["sourceVersionId"]:
+                    supplied = prepare_content(QuestionContent(**content_of(q)))
+                    if fingerprint(supplied) != fingerprint(content_of(old)):
+                        fail("版本快照不可编辑，请先保存新版本并主动换版")
+                    q.update(content_of(old))
+                else:
+                    v = readable_version(db, version, user, selecting=True)
+                    if str(v["questionId"]) != source:
+                        fail("目标版本不属于当前题目系列")
+                    q.update(content_of(v["content"]))
+            elif version:
+                if old:
+                    fail("普通题导出不自动绑定原位置，请新增可复用位置")
+                if not key:
+                    fail("新增可复用位置需要operationKey")
+                v = readable_version(db, version, user, selecting=True)
+                if str(v["questionId"]) != source:
+                    fail("版本不属于来源题目")
+                temporary = q["id"]
+                q["id"] = "r" + fingerprint([str(survey["_id"]), revision, key, temporary])[:48]
+                if temporary in id_map:
+                    fail("批内临时位置标识重复")
+                id_map[temporary] = q["id"]
+                q.update(content_of(v["content"]))
+            elif old and old.get("sourceVersionId"):
+                fail("不能删除可复用位置的来源标签")
+        for q in data["questions"]:
+            for rule in q.get("jumpRules", []):
+                rule["target"] = id_map.get(rule["target"], rule["target"])
+&gt;       return prepare_survey(SurveyInput(**data)), id_map
+                              ^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 2 validation errors for SurveyInput
+E       questions.0.validation.minimum
+E         Decimal input should be an integer, float, string or Decimal object [type=decimal_type, input_value=Decimal128('0'), input_type=Decimal128]
+E           For further information visit https://errors.pydantic.dev/2.14/v/decimal_type
+E       questions.0.validation.maximum
+E         Decimal input should be an integer, float, string or Decimal object [type=decimal_type, input_value=Decimal128('120'), input_type=Decimal128]
+E           For further information visit https://errors.pydantic.dev/2.14/v/decimal_type
+
+app\survey_questions.py:59: ValidationError</failure></testcase><testcase classname="tests.test_system" name="test_T32_consistent_identity_retry_and_archival[True]" time="0.302"><failure message="pydantic_core._pydantic_core.ValidationError: 2 validation errors for SurveyInput&#10;questions.0.validation.minimum&#10;  Decimal input should be an integer, float, string or Decimal object [type=decimal_type, input_value=Decimal128('0'), input_type=Decimal128]&#10;    For further information visit https://errors.pydantic.dev/2.14/v/decimal_type&#10;questions.0.validation.maximum&#10;  Decimal input should be an integer, float, string or Decimal object [type=decimal_type, input_value=Decimal128('120'), input_type=Decimal128]&#10;    For further information visit https://errors.pydantic.dev/2.14/v/decimal_type">env = (Database(MongoClient(host=['127.0.0.1:27019'], document_class=dict, tz_aware=True, connect=True, serverselectiontimeo...df1'), &lt;fastapi.applications.FastAPI object at 0x0000022221CA37A0&gt;, &lt;test_system.Browser object at 0x00000222214FE030&gt;)
+whole = True
+
+    @pytest.mark.parametrize("whole", [False, True])
+    def test_T32_consistent_identity_retry_and_archival(env, whole):
+        db, _, owner = env
+        q = reusable(owner)
+        v = q["latestVersion"]
+        s = create(owner, [])
+        if whole:
+            body = whole_body(s, questions=[{"id": "temporary", **v["content"], "sourceQuestionId": q["id"], "sourceVersionId": v["id"]}])
+            path, method = f"/api/surveys/{s['id']}", "PUT"
+        else:
+            body = {"versionId": v["id"], "editRevision": 1, "operationKey": uuid.uuid4().hex}
+            path, method = f"/api/surveys/{s['id']}/question-instances", "POST"
+&gt;       s = owner.request(method, path, body).json()
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_system.py:901: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_system.py:35: in request
+    return self.client.request(method, path, json=body) if body is not None else self.client.request(method, path)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\starlette\testclient.py:457: in request
+    return super().request(
+.venv\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+.venv\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+.venv\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\starlette\testclient.py:354: in handle_request
+    raise exc
+.venv\Lib\site-packages\starlette\testclient.py:351: in handle_request
+    portal.call(self.app, scope, receive, send)
+.venv\Lib\site-packages\anyio\from_thread.py:340: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\black\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+C:\Users\black\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+.venv\Lib\site-packages\anyio\from_thread.py:265: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\fastapi\applications.py:1216: in __call__
+    await super().__call__(scope, receive, send)
+.venv\Lib\site-packages\starlette\applications.py:96: in __call__
+    await self.middleware_stack(scope, receive, send)
+.venv\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+.venv\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+.venv\Lib\site-packages\fastapi\telemetry\_asgi.py:151: in __call__
+    await self.app(scope, receive, send)
+.venv\Lib\site-packages\starlette\middleware\base.py:203: in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\main.py:141: in boundaries
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\starlette\middleware\base.py:179: in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+.venv\Lib\site-packages\starlette\middleware\base.py:149: in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+.venv\Lib\site-packages\starlette\middleware\exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+.venv\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+.venv\Lib\site-packages\starlette\routing.py:676: in __call__
+    await self.middleware_stack(scope, receive, send)
+.venv\Lib\site-packages\fastapi\routing.py:2791: in app
+    await route.handle(scope, receive, send)
+.venv\Lib\site-packages\fastapi\routing.py:1310: in handle
+    await super().handle(scope, receive, send)
+.venv\Lib\site-packages\starlette\routing.py:282: in handle
+    await self.app(scope, receive, send)
+.venv\Lib\site-packages\fastapi\routing.py:165: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+.venv\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+.venv\Lib\site-packages\fastapi\routing.py:151: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\fastapi\routing.py:727: in app
+    raw_response = await run_endpoint_function(
+.venv\Lib\site-packages\fastapi\routing.py:362: in run_endpoint_function
+    return await run_in_threadpool(
+.venv\Lib\site-packages\starlette\concurrency.py:34: in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\anyio\to_thread.py:65: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+.venv\Lib\site-packages\anyio\_backends\_asyncio.py:2706: in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+.venv\Lib\site-packages\anyio\_backends\_asyncio.py:1100: in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\fastapi\telemetry\_api.py:244: in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+app\main.py:221: in update
+    return save_definition(db, survey, user, body.editRevision, body.operationKey,
+app\survey_questions.py:79: in save_definition
+    prepared, id_map = normalize_positions(db, survey, user, build(), revision, key)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+db = Database(MongoClient(host=['127.0.0.1:27019'], document_class=dict, tz_aware=True, connect=True, serverselectiontimeoutms=3000), 'survey_course_test_9e76b7824b494db286cc8537e6bcadf1')
+survey = {'_id': ObjectId('6adb19292292b1638ec42a4f'), 'title': '测试问卷', 'description': '', 'allowAnonymous': True, ...}
+user = {'_id': ObjectId('6adb19292292b1638ec42a4b'), 'username': 'owner', 'usernameKey': 'owner', 'passwordHash': '$argon2id$v=19$m=65536,t=3,p=4$SZnpamBCpsbxKQ4wwnCd1Q$0d7/ECHZ3U3FSzCnB6NSzte2rt6uoO1+PhfAcKAURdA', ...}
+data = {'title': '测试问卷', 'description': '', 'allowAnonymous': True, 'allowMultiple': False, ...}
+revision = 1, key = 'b1b1f774a49d4c4d978d93710c898d8a'
+
+    def normalize_positions(db, survey, user, data, revision, key):
+        previous = {q["id"]: q for q in survey["questions"]}
+        id_map = {}
+        for q in data["questions"]:
+            old = previous.get(q["id"])
+            source, version = q.get("sourceQuestionId"), q.get("sourceVersionId")
+            if bool(source) != bool(version):
+                fail("题目来源和版本必须同时提供")
+            if old and old.get("sourceVersionId"):
+                if source != old["sourceQuestionId"] or not version:
+                    fail("已有可复用位置不能移除来源或换成另一系列")
+                if version == old["sourceVersionId"]:
+                    supplied = prepare_content(QuestionContent(**content_of(q)))
+                    if fingerprint(supplied) != fingerprint(content_of(old)):
+                        fail("版本快照不可编辑，请先保存新版本并主动换版")
+                    q.update(content_of(old))
+                else:
+                    v = readable_version(db, version, user, selecting=True)
+                    if str(v["questionId"]) != source:
+                        fail("目标版本不属于当前题目系列")
+                    q.update(content_of(v["content"]))
+            elif version:
+                if old:
+                    fail("普通题导出不自动绑定原位置，请新增可复用位置")
+                if not key:
+                    fail("新增可复用位置需要operationKey")
+                v = readable_version(db, version, user, selecting=True)
+                if str(v["questionId"]) != source:
+                    fail("版本不属于来源题目")
+                temporary = q["id"]
+                q["id"] = "r" + fingerprint([str(survey["_id"]), revision, key, temporary])[:48]
+                if temporary in id_map:
+                    fail("批内临时位置标识重复")
+                id_map[temporary] = q["id"]
+                q.update(content_of(v["content"]))
+            elif old and old.get("sourceVersionId"):
+                fail("不能删除可复用位置的来源标签")
+        for q in data["questions"]:
+            for rule in q.get("jumpRules", []):
+                rule["target"] = id_map.get(rule["target"], rule["target"])
+&gt;       return prepare_survey(SurveyInput(**data)), id_map
+                              ^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 2 validation errors for SurveyInput
+E       questions.0.validation.minimum
+E         Decimal input should be an integer, float, string or Decimal object [type=decimal_type, input_value=Decimal128('0'), input_type=Decimal128]
+E           For further information visit https://errors.pydantic.dev/2.14/v/decimal_type
+E       questions.0.validation.maximum
+E         Decimal input should be an integer, float, string or Decimal object [type=decimal_type, input_value=Decimal128('120'), input_type=Decimal128]
+E           For further information visit https://errors.pydantic.dev/2.14/v/decimal_type
+
+app\survey_questions.py:59: ValidationError</failure></testcase><testcase classname="tests.test_system" name="test_T33_explicit_upgrade_preserves_legacy_data_and_exports" time="0.636" /><testcase classname="tests.test_system" name="test_T33_new_program_rejects_unknown_schema_without_mutation" time="0.374" /></testsuite></testsuites>

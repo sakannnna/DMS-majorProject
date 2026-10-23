@@ -6,7 +6,9 @@
 
 项目仓库：[sakannnna/DMS-majorProject](https://github.com/sakannnna/DMS-majorProject)
 
-这是第一阶段的在线问卷系统：创建者配置并发布问卷，填写者登录后通过链接作答，创建者查看结果。支持单选、多选、文本和数字题，以及配置式校验、条件跳转和匿名填写。
+这是在第一阶段基础上扩展的在线问卷系统：创建者配置并发布问卷，填写者登录后通过链接作答，创建者查看结果。支持单选、多选、文本和数字题，以及配置式校验、条件跳转和匿名填写。
+
+第二阶段第一部分已接通独立题目、不可变版本和问卷选入；共享、题库、使用追踪与跨卷统计留待后续。旧数据升级方法见后面的“旧库显式升级”；见[需求与设计](docs/需求与设计.md)中的第二阶段章节及[新增需求原文](大作业一：需求变更.docx)。运行及验证边界以当前说明为准。
 
 ## 双击启动
 
@@ -23,7 +25,8 @@
 3. **发布并复制链接**：发布后，题目、选项、校验、跳转及填写策略被冻结；标题、说明和截止时间仍可修改。
 4. **填写者登录作答**：退出创建者账号，打开分享链接，用另一账号注册或登录；逐题填写，可返回修改。到达结束位置后先进入提交确认，点击提交才保存一份答卷。
 5. **创建者查看统计**：切回创建者账号，在自己的列表点击“统计”。页面同时显示答卷份数和去重填写账号数；同一账号重复提交会增加份数，账号数不随之增加。数字平均值按有效答卷计算。
-6. **需要时关闭问卷**：关闭后不可重开。仅超过截止时间的已发布问卷可通过延期恢复填写，和“已关闭”不同。
+6. **复用题目（第二阶段第一部分）**：右上“我的题目”可新建、保存草稿或正式版，基于旧版编辑/恢复生成新版本；问卷编辑页可从已有题目选入，同一版可选多次，必答和跳转独立设置。草稿可主动换版，发布后冻结。旧卷的“保存为可复用题目”只保存题目内容，旧答案仍留在原卷统计。
+7. **需要时关闭问卷**：关闭后不可重开。仅超过截止时间的已发布问卷可通过延期恢复填写，和“已关闭”不同。
 
 所有填写者均需登录；匿名是对创建者隐藏填写账号，内部仍保留关联用于次数限制。分享链接只授予填写入口，不能查看他人的管理页或统计。默认地址仅供本机演示：另一台设备不能用它的 `127.0.0.1` 访问本机服务。完整权限、跳转和统计边界见需求与设计。
 
@@ -50,10 +53,10 @@ T23是冒烟检查，即用一条完整路线快速检查创建、发布、填�
 交付前可运行全量测试：
 
 ```powershell
-.\.venv\Scripts\python.exe -X utf8 -m pytest -q --junitxml=docs/evidence/pytest.xml
+.\.venv\Scripts\python.exe -X utf8 -m pytest -q --junitxml=docs/evidence/stage2-part1-regression.xml
 ```
 
-测试会创建并清理随机独立测试库，不清空普通业务库。T24另检查100账号、最多10个工作线程的提交正确性；单独运行时把筛选改为 `-k T24`，输出改为 `docs/evidence/T24-correctness.xml`。其结果不表示压力极限或真实在线人数。关键输入、预期、耗时和已有证据统一见[测试记录](docs/测试记录.md)。运行命令会更新输出文件，保存新结果时应同时记录版本，不能继续沿用旧证据说明。
+测试会创建并清理随机独立测试库，不清空普通业务库。T24另检查100账号、最多10个工作线程的提交正确性；单独运行时把筛选改为 `-k T24`，输出改为 `docs/evidence/T24-correctness.xml`。其结果不表示压力极限或真实在线人数。关键输入、预期、耗时和已有证据统一见[测试记录](docs/测试记录.md)。当前计时JSON默认使用stage2-part1-前缀，不覆盖第一阶段同名专项证据；可用SURVEY_TEST_EVIDENCE_PREFIX调整前缀。运行命令会更新本批输出文件，保存新结果时应同时记录版本，不能继续沿用旧证据说明。
 
 ## 环境检查与手动启动
 
@@ -75,7 +78,7 @@ Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object 
 
 端口已监听时先访问页面和 `/openapi.json` 核对是否为本项目服务，不重复启动；只有端口检查不能证明服务正确。服务不可达时再检查 `.local/web.stderr.log`（若使用了后台启动）和 MongoDB 日志。
 
-数据库启动脚本仅绑定 127.0.0.1:27019，数据位于 `.local/mongo`，日志为 `.local/mongodb.log`；它复用 D 盘可执行文件，不安装 Windows 服务。脚本检测端口已监听时不再启动，应用启动会实际 ping 数据库。应用默认数据库为 `survey_course`，自动建立四集合 validator 和索引，重启不重置数据。
+数据库启动脚本仅绑定 127.0.0.1:27019，数据位于 `.local/mongo`，日志为 `.local/mongodb.log`；它复用 D 盘可执行文件，不安装 Windows 服务。脚本检测端口已监听时不再启动，应用启动会实际 ping 数据库。应用默认数据库为 `survey_course`；空库建立当前六集合及索引，已有第一阶段库必须先显式升级，重启不重置数据。
 
 | 配置项 | 默认值和用途 |
 | --- | --- |
@@ -85,6 +88,25 @@ Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object 
 | SURVEY_BASE_URL | `http://127.0.0.1:8009`；示例生成工具调用的服务地址 |
 
 可在启动前设置环境变量，例如 `$env:MONGODB_URI = 'mongodb://127.0.0.1:27017'`。业务账号、会话、问卷和答卷均在 MongoDB；配置及进程日志不充当业务存储。默认提供本机演示，分享链接需要接收者能访问同一服务；未提供公网部署配置。
+
+## 旧库显式升级
+
+第一次用第二阶段程序打开旧库前，停止网页服务及其他数据库写入者，启动MongoDB后执行下列命令。脚本先预检，再备份所有文档、集合校验与索引，备份成功才升级；不改写旧问卷或答卷。已升级后可重跑，但每次使用新的备份目录。不应通过删库解决版本错误。
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 scripts/upgrade-db.py --app-stopped --backup-dir .local/backups/before-stage2-part1
+.\start.bat
+```
+
+脚本按MONGODB_URI/MONGODB_DB选择数据库。目录已存在时拒绝覆盖；中断后仍保持服务停止，使用另一新目录重跑。未知结构先拒绝；不完整升级不能对外提供写入。备份目录含业务及认证数据，应留在本机，不加入提交材料。
+
+需要回退时，先停止新版，把原备份恢复到一个**全新空库**，再让对应旧程序连接该库；不直接降级现库validator。以下为恢复命令示例，不会删除原库；原库升级后产生的新数据不会自动出现在旧备份中。
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 scripts/upgrade-db.py --app-stopped --backup-dir .local/backups/before-stage2-part1 --restore-into survey_course_restored
+# 在启动对应旧版本前设置：
+$env:MONGODB_DB = 'survey_course_restored'
+```
 
 ## 迁移或重建环境
 
@@ -110,9 +132,10 @@ python -m venv .venv
 ## 代码和阶段基线
 
 - [请求模型](app/models.py)、[输出模型](app/contracts.py)：由路由生成输入输出API契约。
-- [数据库初始化](app/database.py)：四集合 schema validator、索引及序列化。
+- [数据库初始化](app/database.py)：当前六集合validator、兼容预检、索引及序列化；[显式升级/备份恢复](scripts/upgrade-db.py)负责旧库接入。
 - [校验与跳转](app/logic.py)：独立于网页的规则检查与路径重放。
 - [账号安全](app/security.py)、[应用接口](app/main.py)：认证、权限和业务操作。
+- [独立题目与版本](app/reusable.py)、[问卷位置统一保存](app/survey_questions.py)：第一部分新增业务模块。
 - [页面模板](app/templates/index.html)、[页面交互](app/static/app.js)、[样式](app/static/style.css)：简单网页。
 - [自动测试](tests/test_system.py)、[依赖版本](requirements.txt)、[数据库启动脚本](scripts/start-db.ps1)。
 
@@ -121,4 +144,4 @@ Git 标签 `stage1-v1` 保存第一阶段早期交付基线，不含之后所有
 
 ## 变更收尾
 
-按[工作规范](docs/工作与记录规范.md)在每批相关代码变更中完成契约、前端消费与对应文档检查；接口回归包含T19。本地链接检查使用[文档检查脚本](scripts/check-docs.py)，默认只检查Git工作树中变更的Markdown，也可传入本批相关文档路径。不要为每次检查新建报告，实际结果进入AI日志。
+按[工作规范](docs/工作与记录规范.md)在每批相关代码变更中完成契约、前端消费与对应文档检查；接口回归包含T19。本地链接检查使用[文档检查脚本](scripts/check-docs.py)，默认只检查Git工作树中变更的Markdown，也可传入本批相关文档路径。不要为每次检查新建报告，实际验证结果进入测试记录；未经要求不自动记录AI日志。

@@ -1,0 +1,67 @@
+{
+  "baseCommit": "0cb506ade942c47139a114865e682f504bbdfae9",
+  "version": "uncommitted stage-two part-one working tree",
+  "sourceSha256": {
+    "app/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "app/contracts.py": "685415115cef982294cbd912e5a41327bbda555ef1ded80f42e6b2b8daef0e8c",
+    "app/database.py": "3a52bf786161f85716f206a9c72990f527b693ea67dcd7500080c3ad17b845bc",
+    "app/logic.py": "2bab3e7d86b8985a6aaa1321f777ddf537fce3a8e9337ec05eadb53c73ec2991",
+    "app/main.py": "2ae0639f3792187145ebf4be81c7672039afe7e50705aa5bed559f30663680d4",
+    "app/models.py": "13ba448d3726142d519120b4a601d36c0d1d0d72830572f0ae38450c67d41695",
+    "app/reusable.py": "281ec5fdb3379a132a776e194ea962f10db749c0a718e3890a2fc2f72ad2fd42",
+    "app/security.py": "156c76b8d1bac67cd5688014e2f102a2a431b8265fd4642d0fc77ceff6c69fae",
+    "app/static/app.js": "75507937d30a70f3af0c3d7d139f6903089c5346deae26bac9fa856648bd531d",
+    "app/survey_questions.py": "2700afdf1b6fdc8fc50f2e1f609c6ff9e8c63d10ff8bdcd9d0594ac23f7dbc3d",
+    "app/templates/index.html": "ad034dbf6ca6d6a43207fd51c147c6706489a67e73b26160a843ed2ccb772601",
+    "requirements.txt": "73d967cf9428575b4fa085c3500d748ae226264733055b637ccdbff58ff60523",
+    "scripts/upgrade-db.py": "0fbb22668ffd6dd43d6189264d73004997601514af09760cfc8257502a82a6b8",
+    "tests/test_system.py": "5bc0f00a9594f5c009066ec105a4d50fa27dd699ae6e7c9823d99dd76cd89730"
+  },
+  "finalRegression": {
+    "tests": 90,
+    "failures": 0,
+    "seconds": 43.28,
+    "warning": "existing Starlette/httpx deprecation warning",
+    "junit": "stage2-part1-regression.xml"
+  },
+  "earlierFocusedRun": {
+    "tests": 15,
+    "seconds": 6.25,
+    "junit": "stage2-part1-api.xml",
+    "scope": "before final 100-question-limit case; final regression covers all 16 new checks"
+  },
+  "firstRun": {
+    "passed": 7,
+    "failed": 3,
+    "seconds": 5.51,
+    "junit": "stage2-part1-first-failure.xml",
+    "failure": "Decimal128 passed directly into request validation while selecting numeric snapshots"
+  },
+  "businessUpgrade": {
+    "database": "survey_course",
+    "counts": {
+      "users": 3,
+      "surveys": 4,
+      "responses": 3,
+      "sessions": 0
+    },
+    "unchanged": {
+      "users": true,
+      "surveys": true,
+      "responses": true,
+      "sessions": true
+    },
+    "backup": ".local/backups/before-stage2-part1-20261023",
+    "startup": "HTML/OpenAPI 200, version 2.1.0"
+  },
+  "untouchedDocuments": {
+    "docs/AI使用日志.md": true,
+    "docs/阶段一报告.md": true
+  },
+  "limitations": [
+    "Sharing/banks/usages/cross-survey statistics not implemented",
+    "No stress-limit claim",
+    "Historical browser cases not counted as new executions",
+    "No AI log entry added"
+  ]
+}

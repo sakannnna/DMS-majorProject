@@ -18,7 +18,7 @@ from fastapi.testclient import TestClient
 from pymongo import MongoClient
 from pymongo.errors import WriteError
 
-from app.database import initialize, now
+from app.database import initialize, now, public
 from app.logic import normalize, prepare_survey, walk
 from app.main import create_app
 from app.models import Answer, SurveyInput
@@ -431,8 +431,13 @@ def test_T19_response_contracts_and_frontend_fields(env):
 @pytest.mark.parametrize("with_document", [False, True])
 def test_T20_old_initializer_does_not_overwrite_future_schema(env, with_document):
     import copy
+    import types
     db, _, owner = env
     s = create(owner)
+    legacy = types.ModuleType("stage1_database")
+    exec(subprocess.check_output(["git", "show", "stage1-final:app/database.py"]).decode("utf-8"), legacy.__dict__)
+    if not with_document:
+        db.surveys.update_one({"_id": ObjectId(s["id"])}, {"$set": {"schemaVersion": 1}})
     validator = copy.deepcopy(db.surveys.options()["validator"])
     validator["$jsonSchema"]["properties"]["schemaVersion"]["enum"] = [1, 2]
     db.command("collMod", "surveys", validator=validator)
@@ -440,7 +445,7 @@ def test_T20_old_initializer_does_not_overwrite_future_schema(env, with_document
         db.surveys.update_one({"_id": ObjectId(s["id"])}, {"$set": {"schemaVersion": 2}})
     before = {name: db[name].options() for name in db.list_collection_names()}
     with pytest.raises(RuntimeError, match="Unsupported schema"):
-        initialize(db)
+        legacy.initialize(db)
     assert before == {name: db[name].options() for name in db.list_collection_names()}
     assert db.surveys.count_documents({}) == 1
 
@@ -491,7 +496,10 @@ def measured_case(name, db):
         raise
     finally:
         report["elapsedSeconds"] = round(time.perf_counter() - started, 3)
-        target = Path(__file__).resolve().parents[1] / "docs" / "evidence" / f"{name}.json"
+        prefix = os.getenv("SURVEY_TEST_EVIDENCE_PREFIX", "stage2-part1-")
+        if not all(c.isalnum() or c in "_-" for c in prefix):
+            raise ValueError("Invalid evidence prefix")
+        target = Path(__file__).resolve().parents[1] / "docs" / "evidence" / f"{prefix}{name}.json"
         target.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
@@ -724,3 +732,372 @@ def test_T27_submission_counts_and_distinct_accounts(env):
     finally:
         alpha.client.close()
         beta.client.close()
+
+
+# Stage two part one. Shared accounts/banks/cross-survey aggregation are deliberately absent.
+def reusable(owner, kind="number", **content):
+    q = question(kind, validation={"minimum": "0", "maximum": "120", "integer": True} if kind == "number" else {})
+    data = {k: q[k] for k in ("kind", "title", "options", "validation") if k in q}
+    data.update(content)
+    r = owner.request("POST", "/api/reusable-questions", {"name": "年龄" if kind == "number" else "选择题",
+        "creationKey": uuid.uuid4().hex, "content": data})
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def add_version(owner, q, content, base, **extra):
+    root = owner.request("GET", f"/api/reusable-questions/{q['id']}").json()
+    body = {"editRevision": root["editRevision"], "creationKey": uuid.uuid4().hex,
+            "baseVersionId": base, "content": content, **extra}
+    r = owner.request("POST", f"/api/reusable-questions/{q['id']}/versions", body)
+    assert r.status_code == 200, r.text
+    return r.json(), body
+
+
+def add_to(owner, s, vid, **extra):
+    body = {"versionId": vid, "editRevision": s["editRevision"], "operationKey": uuid.uuid4().hex, **extra}
+    r = owner.request("POST", f"/api/surveys/{s['id']}/question-instances", body)
+    assert r.status_code == 200, r.text
+    return r.json(), body
+
+
+def whole_body(s, **extra):
+    return {**{k: s[k] for k in ("title", "description", "deadline", "allowAnonymous", "allowMultiple", "questions")},
+            "editRevision": s["editRevision"], "operationKey": uuid.uuid4().hex, **extra}
+
+
+def test_T28_version_instances_submission_and_old_snapshot(env):
+    db, app, owner = env
+    q = reusable(owner)
+    v1 = q["latestVersion"]
+    s, _ = add_to(owner, create(owner, []), v1["id"])
+    s, _ = add_to(owner, s, v1["id"])
+    a, b = [x["id"] for x in s["questions"]]
+    assert a != b and all(x["sourceVersionId"] == v1["id"] for x in s["questions"])
+    content = {**v1["content"], "title": "新年龄", "validation": {"maximum": "100", "integer": True}}
+    v2, _ = add_version(owner, q, content, v1["id"])
+    assert v2["versionNo"] == 2 and v2["parentVersionId"] == v1["id"]
+    assert owner.request("GET", f"/api/surveys/{s['id']}").json()["questions"] == s["questions"]
+    s = publish(owner, s)
+    respondent = Browser(app).account("answerer")
+    fill = respondent.request("GET", f"/api/fill/{s['token']}").json()
+    assert not any({"sourceVersionId", "sourceQuestionId", "lastMutation"} & x.keys() for x in fill["questions"])
+    body = payload([{ "questionId": a, "value": "10"}, {"questionId": b, "value": "20"}])
+    response = respondent.request("POST", f"/api/fill/{s['token']}/submit", body)
+    assert response.status_code == 200
+    assert respondent.request("POST", f"/api/fill/{s['token']}/submit", body).json()["replayed"]
+    stored = db.responses.find_one({"surveyId": ObjectId(s["id"])})
+    assert stored["answers"] == [{"questionId": a, "value": Decimal128("10")}, {"questionId": b, "value": Decimal128("20")}]
+    assert db.responses.count_documents({"surveyId": ObjectId(s["id"])}) == 1
+    stats = owner.request("GET", f"/api/surveys/{s['id']}/stats").json()
+    assert (stats["total"], stats["respondentCount"]) == (1, 1)
+    assert [Decimal128(x["average"]).to_decimal() for x in stats["questions"]] == [10, 20]
+    assert all(x["answered"] == 1 for x in stats["questions"])
+    assert owner.request("POST", f"/api/surveys/{s['id']}/questions/{a}/upgrade", {
+        "versionId": v2["id"], "editRevision": s["editRevision"], "operationKey": uuid.uuid4().hex}).status_code == 409
+
+
+def test_T29_branch_restore_immutable_retry_permissions(env):
+    db, app, owner = env
+    q = reusable(owner)
+    v1 = q["latestVersion"]
+    before = db.questionVersions.find_one({"_id": ObjectId(v1["id"])})
+    v2, body = add_version(owner, q, {**v1["content"], "title": "V2"}, v1["id"])
+    assert owner.request("POST", f"/api/reusable-questions/{q['id']}/versions", body).json()["id"] == v2["id"]
+    changed = {**body, "content": {**body["content"], "title": "不同输入"}}
+    assert owner.request("POST", f"/api/reusable-questions/{q['id']}/versions", changed).status_code == 409
+    v3, _ = add_version(owner, q, {**v1["content"], "title": "V3"}, v1["id"])
+    root = owner.request("GET", f"/api/reusable-questions/{q['id']}").json()
+    r = owner.request("POST", f"/api/reusable-questions/{q['id']}/restore", {"versionId": v1["id"],
+        "editRevision": root["editRevision"], "creationKey": uuid.uuid4().hex})
+    assert r.status_code == 200 and r.json()["versionNo"] == 4 and r.json()["content"] == v1["content"]
+    assert v3["parentVersionId"] == v2["parentVersionId"] == v1["id"]
+    history = owner.request("GET", f"/api/question-versions/{v3['id']}/history").json()
+    assert [n["versionId"] for n in history["nodes"]] == [v3["id"], v1["id"]]
+    assert db.questionVersions.find_one({"_id": ObjectId(v1["id"])}) == before
+    other = Browser(app).account("intruder")
+    assert other.request("GET", "/api/reusable-questions").json() == []
+    for path in (f"/api/reusable-questions/{q['id']}", f"/api/reusable-questions/{q['id']}/versions",
+                 f"/api/question-versions/{v1['id']}", f"/api/question-versions/{v1['id']}/history"):
+        assert other.request("GET", path).status_code == 404
+    foreign_s = create(other, [])
+    assert other.request("POST", f"/api/surveys/{foreign_s['id']}/question-instances", {
+        "versionId": v1["id"], "editRevision": 1, "operationKey": uuid.uuid4().hex}).status_code == 404
+
+
+@pytest.mark.parametrize("whole", [False, True])
+def test_T30_upgrade_validates_rules_atomically(env, whole):
+    db, _, owner = env
+    q = reusable(owner, "single")
+    v1 = q["latestVersion"]
+    s, _ = add_to(owner, create(owner, []), v1["id"])
+    qid = s["questions"][0]["id"]
+    body = whole_body(s)
+    body["questions"][0]["jumpRules"] = [{"conditions": [{"op": "eq", "value": "a"}], "target": "END"}]
+    s = owner.request("PUT", f"/api/surveys/{s['id']}", body).json()
+    v2, _ = add_version(owner, q, {**v1["content"], "options": [{"id": "b", "label": "B"}, {"id": "c", "label": "C"}]}, v1["id"])
+    before = db.surveys.find_one({"_id": ObjectId(s["id"])})
+    if whole:
+        body = whole_body(s)
+        body["questions"][0]["sourceVersionId"] = v2["id"]
+        r = owner.request("PUT", f"/api/surveys/{s['id']}", body)
+    else:
+        r = owner.request("POST", f"/api/surveys/{s['id']}/questions/{qid}/upgrade", {
+            "versionId": v2["id"], "editRevision": s["editRevision"], "operationKey": uuid.uuid4().hex})
+    assert r.status_code == 422, r.text
+    assert db.surveys.find_one({"_id": ObjectId(s["id"])}) == before
+    body = whole_body(s)
+    body["questions"][0]["jumpRules"] = []
+    body["questions"][0]["sourceVersionId"] = v2["id"]
+    good = owner.request("PUT", f"/api/surveys/{s['id']}", body)
+    assert good.status_code == 200 and good.json()["questions"][0]["id"] == qid
+    assert good.json()["questions"][0]["options"] == v2["content"]["options"]
+
+
+@pytest.mark.parametrize("failure", ["insert", "cleanup"])
+def test_T31_interrupted_save_recover_without_original_request(env, monkeypatch, failure):
+    from pymongo.collection import Collection
+    db, app, owner = env
+    original_insert, original_update = Collection.insert_one, Collection.update_one
+    def insert(self, document, *args, **kwargs):
+        if self.database.name == db.name and self.name == "questionVersions":
+            raise RuntimeError("test injected interruption before version insert")
+        return original_insert(self, document, *args, **kwargs)
+    def update(self, query, document, *args, **kwargs):
+        if self.database.name == db.name and self.name == "reusableQuestions" and "$unset" in document:
+            raise RuntimeError("test injected interruption after version insert")
+        return original_update(self, query, document, *args, **kwargs)
+    with monkeypatch.context() as m:
+        m.setattr(Collection, "insert_one" if failure == "insert" else "update_one", insert if failure == "insert" else update)
+        with pytest.raises(RuntimeError, match="test injected"):
+            reusable(owner)
+    # No original POST body/key is used again; recover through persisted owner state.
+    fresh = Browser(app)
+    assert fresh.request("POST", "/api/login", {"username": "owner", "password": PASSWORD}).status_code == 200
+    q = fresh.request("GET", "/api/reusable-questions").json()[0]
+    p = q["pendingSave"]
+    assert p and not p["needsRepair"]
+    assert db.questionVersions.count_documents({}) == (0 if failure == "insert" else 1)
+    recovery = {"editRevision": q["editRevision"], "operationId": p["operationId"]}
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _: fresh.request("POST", f"/api/reusable-questions/{q['id']}/recover-save", recovery), range(2)))
+    assert all(r.status_code == 200 for r in results)
+    assert {r.json()["id"] for r in results} == {p["versionId"]}
+    assert db.questionVersions.count_documents({}) == 1
+    assert not db.reusableQuestions.find_one()["draft"]
+    assert "pendingSave" not in db.reusableQuestions.find_one()
+    assert fresh.request("GET", f"/api/question-versions/{p['versionId']}").json()["content"] == p["content"]
+
+
+@pytest.mark.parametrize("whole", [False, True])
+def test_T32_consistent_identity_retry_and_archival(env, whole):
+    db, _, owner = env
+    q = reusable(owner)
+    v = q["latestVersion"]
+    s = create(owner, [])
+    if whole:
+        body = whole_body(s, questions=[{"id": "temporary", **v["content"], "sourceQuestionId": q["id"], "sourceVersionId": v["id"]}])
+        path, method = f"/api/surveys/{s['id']}", "PUT"
+    else:
+        body = {"versionId": v["id"], "editRevision": 1, "operationKey": uuid.uuid4().hex}
+        path, method = f"/api/surveys/{s['id']}/question-instances", "POST"
+    s = owner.request(method, path, body).json()
+    again = owner.request(method, path, body)
+    assert again.status_code == 200 and again.json()["editRevision"] == s["editRevision"]
+    assert len(again.json()["questions"]) == 1
+    changed = {**body, "title": "changed"} if whole else {**body, "required": False}
+    assert owner.request(method, path, changed).status_code == 409
+    local_id = s["questions"][0]["id"]
+    for alteration in ({"sourceVersionId": None, "sourceQuestionId": None}, {"title": "forged"}):
+        import copy
+        bad = whole_body(copy.deepcopy(s))
+        bad["questions"][0].update(alteration)
+        before = db.surveys.find_one({"_id": ObjectId(s["id"])})
+        assert owner.request("PUT", f"/api/surveys/{s['id']}", bad).status_code == 422
+        assert db.surveys.find_one({"_id": ObjectId(s["id"])}) == before
+    deletion = owner.request("DELETE", f"/api/surveys/{s['id']}/questions/{local_id}", {
+        "editRevision": s["editRevision"], "operationKey": uuid.uuid4().hex})
+    assert deletion.status_code == 200 and deletion.json()["questions"] == []
+    assert owner.request(method, path, body).status_code == 409
+    s, _ = add_to(owner, deletion.json(), v["id"])
+    assert s["questions"][0]["id"] != local_id
+    root = owner.request("GET", f"/api/reusable-questions/{q['id']}").json()
+    assert owner.request("PATCH", f"/api/reusable-questions/{q['id']}", {"archived": True, "editRevision": root["editRevision"]}).status_code == 200
+    kept = owner.request("PUT", f"/api/surveys/{s['id']}", whole_body(s))
+    assert kept.status_code == 200
+    assert owner.request("POST", f"/api/surveys/{s['id']}/question-instances", {"versionId": v["id"],
+        "operationKey": uuid.uuid4().hex, "editRevision": kept.json()["editRevision"]}).status_code == 409
+
+
+def test_T33_explicit_upgrade_preserves_legacy_data_and_exports(env, tmp_path, monkeypatch):
+    import types
+    from app.database import upgrade
+    db, app, owner = env
+    # A separate real stage-one database, initialized by the actual tagged program.
+    legacy_db = db.client["survey_course_test_" + uuid.uuid4().hex]
+    legacy = types.ModuleType("stage1_database")
+    exec(subprocess.check_output(["git", "show", "stage1-final:app/database.py"]).decode("utf-8"), legacy.__dict__)
+    try:
+        legacy.initialize(legacy_db)
+        user = db.users.find_one({"usernameKey": "owner"})
+        legacy_db.users.insert_one(user)
+        s = publish(owner, create(owner, [question("number")], allowMultiple=True))
+        body = payload([{ "questionId": "q1", "value": "12"}])
+        assert owner.request("POST", f"/api/fill/{s['token']}/submit", body).status_code == 200
+        old_s = db.surveys.find_one({"_id": ObjectId(s["id"])})
+        old_s["schemaVersion"] = 1
+        legacy_db.surveys.insert_one(old_s)
+        old_r = db.responses.find_one({"surveyId": old_s["_id"]})
+        legacy_db.responses.insert_one(old_r)
+        with pytest.raises(RuntimeError, match="explicit migration"):
+            initialize(legacy_db)
+        import runpy
+        from pymongo.database import Database
+        tools = runpy.run_path(str(Path(__file__).resolve().parents[1] / "scripts/upgrade-db.py"))
+        backup = tools["backup_database"](legacy_db, tmp_path / "stage-one-backup")
+        restored = db.client["survey_course_test_" + uuid.uuid4().hex]
+        try:
+            tools["restore_database"](restored, backup)
+            legacy.initialize(restored)
+            assert restored.surveys.find_one() == old_s and restored.responses.find_one() == old_r
+            assert restored.users.find_one() == user
+            with pytest.raises(RuntimeError, match="empty"):
+                tools["restore_database"](restored, backup)
+        finally:
+            db.client.drop_database(restored.name)
+        original_command = Database.command
+        def interrupted(self, *args, **kwargs):
+            result = original_command(self, *args, **kwargs)
+            if self.name == legacy_db.name and args[:2] == ("collMod", "surveys"):
+                raise RuntimeError("test injected migration interruption")
+            return result
+        with monkeypatch.context() as m:
+            m.setattr(Database, "command", interrupted)
+            with pytest.raises(RuntimeError, match="test injected migration"):
+                upgrade(legacy_db)
+        with pytest.raises(RuntimeError, match="Incomplete migration"):
+            initialize(legacy_db)
+        upgrade(legacy_db)
+        upgrade(legacy_db)
+        initialize(legacy_db)
+        assert legacy_db.surveys.find_one() == old_s and legacy_db.responses.find_one() == old_r
+        with pytest.raises(RuntimeError, match="Unsupported schema"):
+            legacy.initialize(legacy_db)
+        with TestClient(create_app(legacy_db)) as client:
+            client.headers["x-csrf-token"] = client.get("/api/session").json()["csrf"]
+            assert client.post("/api/login", json={"username": "owner", "password": PASSWORD}).status_code == 200
+            response = client.post(f"/api/surveys/{s['id']}/questions/q1/save-as-reusable", json={"name": "旧年龄", "operationKey": "legacy-export-key"})
+            assert response.status_code == 200, response.text
+            assert response.json()["latestVersion"]["content"]["kind"] == "number"
+            assert legacy_db.surveys.find_one() == old_s and legacy_db.responses.find_one() == old_r
+            stats = client.get(f"/api/surveys/{s['id']}/stats").json()
+            assert stats["total"] == 1 and stats["questions"][0]["average"] == "12"
+            # Same old submission still has its original idempotency identity.
+            assert client.post(f"/api/fill/{s['token']}/submit", json=body).json()["replayed"]
+            assert client.post(f"/api/fill/{s['token']}/submit", json=payload([{"questionId": "q1", "value": "14"}])).status_code == 200
+            assert legacy_db.responses.count_documents({"surveyId": old_s["_id"]}) == 2
+            assert legacy_db.responses.find_one({"_id": old_r["_id"]}) == old_r
+            assert client.get(f"/api/surveys/{s['id']}/stats").json()["questions"][0]["average"] == "13"
+            draft = {**old_s, "_id": ObjectId(), "token": uuid.uuid4().hex, "status": "draft"}
+            legacy_db.surveys.insert_one(draft)
+            edited = client.put(f"/api/surveys/{draft['_id']}", json={"title": "旧草稿继续编辑",
+                "questions": public(old_s["questions"]), "editRevision": draft["editRevision"]})
+            assert edited.status_code == 200 and edited.json()["schemaVersion"] == 2
+            assert edited.json()["questions"][0]["id"] == "q1"
+
+    finally:
+        assert legacy_db.name.startswith("survey_course_test_")
+        db.client.drop_database(legacy_db.name)
+
+
+@pytest.mark.parametrize("future", ["version", "validator"])
+def test_T33_new_program_rejects_unknown_schema_without_mutation(env, future):
+    import copy
+    db, _, owner = env
+    s = create(owner)
+    validator = copy.deepcopy(db.surveys.options()["validator"])
+    if future == "version":
+        validator["$jsonSchema"]["properties"]["schemaVersion"]["enum"] = [1, 2, 3]
+    else:
+        validator["$jsonSchema"]["properties"]["unknownSemantics"] = {"bsonType": "string"}
+    db.command("collMod", "surveys", validator=validator)
+    if future == "version":
+        db.surveys.update_one({"_id": ObjectId(s["id"])}, {"$set": {"schemaVersion": 3}})
+    before = {name: db[name].options() for name in db.list_collection_names()}
+    with pytest.raises(RuntimeError, match="Unsupported schema"):
+        initialize(db)
+    assert before == {name: db[name].options() for name in db.list_collection_names()}
+
+
+@pytest.mark.parametrize("whole", [False, True])
+def test_T30_delete_referenced_position_requires_atomic_rule_update(env, whole):
+    db, _, owner = env
+    q = reusable(owner)
+    s, _ = add_to(owner, create(owner, [question(id="lead")]), q["latestVersion"]["id"])
+    target = s["questions"][1]["id"]
+    body = whole_body(s)
+    body["questions"][0]["jumpRules"] = [{"conditions": [{"op": "eq", "value": "a"}], "target": target}]
+    s = owner.request("PUT", f"/api/surveys/{s['id']}", body).json()
+    before = db.surveys.find_one({"_id": ObjectId(s["id"])})
+    if whole:
+        body = whole_body(s, questions=s["questions"][:1])
+        r = owner.request("PUT", f"/api/surveys/{s['id']}", body)
+    else:
+        body = {"editRevision": s["editRevision"], "operationKey": uuid.uuid4().hex}
+        r = owner.request("DELETE", f"/api/surveys/{s['id']}/questions/{target}", body)
+    assert r.status_code == 422 and db.surveys.find_one({"_id": ObjectId(s["id"])}) == before
+    if whole:
+        body["questions"][0]["jumpRules"] = []
+        r = owner.request("PUT", f"/api/surveys/{s['id']}", body)
+    else:
+        body["ruleUpdates"] = {"lead": []}
+        r = owner.request("DELETE", f"/api/surveys/{s['id']}/questions/{target}", body)
+    assert r.status_code == 200 and [x["id"] for x in r.json()["questions"]] == ["lead"]
+    assert r.json()["questions"][0]["jumpRules"] == []
+
+
+def test_T29_concurrent_version_save_same_key(env):
+    db, _, owner = env
+    q = reusable(owner)
+    body = {"editRevision": q["editRevision"], "creationKey": "concurrent-version-key",
+            "baseVersionId": q["latestVersion"]["id"], "content": {**q["latestVersion"]["content"], "title": "新版"}}
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _: owner.request("POST", f"/api/reusable-questions/{q['id']}/versions", body), range(2)))
+    assert all(r.status_code == 200 for r in results), [r.text for r in results]
+    assert len({r.json()["id"] for r in results}) == 1
+    assert db.questionVersions.count_documents({"questionId": ObjectId(q["id"])}) == 2
+
+
+def test_T31_damaged_pending_is_visible_but_not_committed(env, monkeypatch):
+    from pymongo.collection import Collection
+    db, _, owner = env
+    original = Collection.insert_one
+    def interrupted(self, *args, **kwargs):
+        if self.database.name == db.name and self.name == "questionVersions":
+            raise RuntimeError("test injected interruption")
+        return original(self, *args, **kwargs)
+    with monkeypatch.context() as m:
+        m.setattr(Collection, "insert_one", interrupted)
+        with pytest.raises(RuntimeError, match="test injected"):
+            reusable(owner)
+    root = db.reusableQuestions.find_one()
+    db.reusableQuestions.update_one({"_id": root["_id"]}, {"$unset": {"pendingSave.content": ""}})
+    before = db.reusableQuestions.find_one()
+    visible = owner.request("GET", "/api/reusable-questions").json()[0]
+    assert visible["pendingSave"]["needsRepair"] and visible["pendingSave"]["content"] is None
+    response = owner.request("POST", f"/api/reusable-questions/{visible['id']}/recover-save", {
+        "editRevision": visible["editRevision"], "operationId": visible["pendingSave"]["operationId"]})
+    assert response.status_code == 409 and db.reusableQuestions.find_one() == before
+    assert db.questionVersions.count_documents({}) == 0
+
+
+
+def test_T32_instance_limit_returns_validation_error_without_write(env):
+    db, _, owner = env
+    q = reusable(owner)
+    s = create(owner, [question("text", f"q{i}") for i in range(100)])
+    before = db.surveys.find_one({"_id": ObjectId(s["id"])})
+    r = owner.request("POST", f"/api/surveys/{s['id']}/question-instances", {
+        "versionId": q["latestVersion"]["id"], "editRevision": s["editRevision"], "operationKey": uuid.uuid4().hex})
+    assert r.status_code == 422
+    assert db.surveys.find_one({"_id": ObjectId(s["id"])}) == before

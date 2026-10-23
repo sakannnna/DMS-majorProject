@@ -38,12 +38,15 @@ def decimal_value(value):
 
 
 def prepare_survey(model):
-    data = model.model_dump(exclude={"editRevision"})
+    data = model.model_dump(exclude={"editRevision", "operationKey"})
     data["title"] = data["title"].strip()
     if not data["title"]:
         fail("问卷标题不能为空")
     data["deadline"] = deadline(data["deadline"])
     for q in data["questions"]:
+        if not q.get("sourceQuestionId") and not q.get("sourceVersionId"):
+            q.pop("sourceQuestionId", None)
+            q.pop("sourceVersionId", None)
         q["title"] = q["title"].strip()
         q["options"] = [{**o, "label": o["label"].strip()} for o in q["options"]]
         q["validation"] = {k: Decimal128(number(x)) if isinstance(x, Decimal) else x for k, x in q["validation"].items()}

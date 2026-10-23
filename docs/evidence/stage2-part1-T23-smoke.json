@@ -1,0 +1,13 @@
+{
+  "case": "T23-smoke",
+  "database": "survey_course_test_c812c3a207d4498daeb0eea2a0267b3a",
+  "passed": true,
+  "requestFailures": [],
+  "baseCommit": "0cb506ade942c47139a114865e682f504bbdfae9",
+  "testSourceSha256": "5bc0f00a9594f5c009066ec105a4d50fa27dd699ae6e7c9823d99dd76cd89730",
+  "timingScope": "test body; excludes env fixture setup and cleanup; seconds",
+  "storedResponses": 1,
+  "sameKeyReplayAdded": 0,
+  "closedSubmitStatus": 409,
+  "elapsedSeconds": 0.318
+}

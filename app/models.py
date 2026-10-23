@@ -48,13 +48,19 @@ class Question(InputModel):
     jumpRules: list[Rule] = Field(default_factory=list, max_length=50)
 
 
+class ManagedQuestion(Question):
+    sourceQuestionId: str | None = None
+    sourceVersionId: str | None = None
+
+
 class SurveyInput(InputModel):
     title: str = Field(min_length=1, max_length=200)
     description: str = Field(default="", max_length=5000)
     allowAnonymous: bool = True
     allowMultiple: bool = False
     deadline: str | None = None
-    questions: list[Question] = Field(default_factory=list, max_length=100)
+    questions: list[ManagedQuestion] = Field(default_factory=list, max_length=100)
+    operationKey: str | None = Field(default=None, pattern=r"^[a-zA-Z0-9_-]{8,80}$")
 
 
 class SurveyUpdate(SurveyInput):
@@ -84,3 +90,62 @@ class WalkInput(InputModel):
 class Submission(WalkInput):
     submissionKey: str = Field(pattern=r"^[a-zA-Z0-9_-]{8,80}$")
     anonymous: bool = True
+
+
+class QuestionContent(InputModel):
+    kind: Literal["single", "multiple", "text", "number"]
+    title: str = Field(min_length=1, max_length=500)
+    options: list[Option] = Field(default_factory=list, max_length=50)
+    validation: Validation = Field(default_factory=Validation)
+
+
+class QuestionDraft(InputModel):
+    baseVersionId: str | None = None
+    content: QuestionContent
+
+
+class ReusableCreate(InputModel):
+    name: str = Field(min_length=1, max_length=200)
+    creationKey: str = Field(pattern=r"^[a-zA-Z0-9_-]{8,80}$")
+    content: QuestionContent | None = None
+    saveVersion: bool = True
+
+
+class ReusableUpdate(Revision):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    archived: bool | None = None
+    draft: QuestionDraft | None = None
+
+
+class VersionSave(QuestionDraft, Revision):
+    creationKey: str = Field(pattern=r"^[a-zA-Z0-9_-]{8,80}$")
+
+
+class RestoreVersion(Revision):
+    versionId: str
+    creationKey: str = Field(pattern=r"^[a-zA-Z0-9_-]{8,80}$")
+
+
+class RecoverSave(Revision):
+    operationId: str
+
+
+class ExportQuestion(InputModel):
+    operationKey: str = Field(pattern=r"^[a-zA-Z0-9_-]{8,80}$")
+    name: str = Field(min_length=1, max_length=200)
+
+
+class InstanceAdd(Revision):
+    operationKey: str = Field(pattern=r"^[a-zA-Z0-9_-]{8,80}$")
+    versionId: str
+    required: bool = True
+
+
+class InstanceUpgrade(Revision):
+    operationKey: str = Field(pattern=r"^[a-zA-Z0-9_-]{8,80}$")
+    versionId: str
+
+
+class InstanceDelete(Revision):
+    operationKey: str = Field(pattern=r"^[a-zA-Z0-9_-]{8,80}$")
+    ruleUpdates: dict[str, list[Rule]] = Field(default_factory=dict, max_length=100)

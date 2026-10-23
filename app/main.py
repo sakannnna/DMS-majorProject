@@ -15,11 +15,14 @@ from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from starlette.concurrency import run_in_threadpool
 
-from .contracts import (MessageOut, SessionOut, LoginOut, SurveySummaryOut, SurveyOut,
+from .contracts import (MessageOut, SessionOut, LoginOut, SurveySummaryOut, SurveyOut, ReusableOut,
                         FillOut, WalkOut, PreviewOut, SubmitOut, StatsOut, QuestionStatsOut, ErrorOut)
 from .database import connect, initialize, now, public
 from .logic import deadline, fail, prepare_survey, validate_definition, walk
-from .models import Credentials, MetadataUpdate, Revision, Submission, SurveyInput, SurveyUpdate, WalkInput
+from .models import (Credentials, MetadataUpdate, Revision, Submission, SurveyInput, SurveyUpdate, WalkInput,
+                     ExportQuestion, InstanceAdd, InstanceUpgrade, InstanceDelete, ReusableCreate, QuestionContent)
+from .reusable import router as question_router, readable_version, new_question, content_of
+from .survey_questions import definition, save_definition
 from .security import DUMMY_HASH, create_session, current_user, digest, hasher, username, verify
 
 ROOT = Path(__file__).resolve().parent
@@ -56,7 +59,8 @@ def mutate(db, survey, user, revision, changes, required_status=None):
     query = {"_id": survey["_id"], "ownerId": user["_id"], "editRevision": revision}
     if required_status:
         query["status"] = required_status
-    result = db.surveys.find_one_and_update(query, {"$set": {**changes, "updatedAt": now()}, "$inc": {"editRevision": 1}},
+    result = db.surveys.find_one_and_update(query, {"$set": {**changes, "schemaVersion": 2, "updatedAt": now()},
+                                                 "$unset": {"lastMutation": ""}, "$inc": {"editRevision": 1}},
                                            return_document=ReturnDocument.AFTER)
     if not result:
         fail("内容已变化，请刷新后重试", 409)
@@ -111,9 +115,10 @@ def create_app(database=None):
         if client:
             client.close()
 
-    app = FastAPI(title="MongoDB 问卷系统", version="1.0.0", lifespan=lifespan,
+    app = FastAPI(title="MongoDB 问卷系统", version="2.1.0", lifespan=lifespan,
                   responses={code: {"model": ErrorOut} for code in (401, 403, 404, 409, 413, 422)})
     app.mount("/static", StaticFiles(directory=str(ROOT / "static")), name="static")
+    app.include_router(question_router)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request, exc):
@@ -198,8 +203,10 @@ def create_app(database=None):
 
     @app.post("/api/surveys", status_code=201, tags=["问卷管理"], response_model=SurveyOut)
     def create(body: SurveyInput, request: Request, user=Depends(current_user)):
+        if any(q.sourceVersionId or q.sourceQuestionId for q in body.questions):
+            fail("请先创建问卷，再从已有题目选入")
         survey = {**prepare_survey(body), "ownerId": user["_id"], "token": secrets.token_urlsafe(18), "status": "draft",
-                  "editRevision": 1, "definitionVersion": 1, "schemaVersion": 1, "createdAt": now(), "updatedAt": now()}
+                  "editRevision": 1, "definitionVersion": 1, "schemaVersion": 2, "createdAt": now(), "updatedAt": now()}
         request.app.state.db.surveys.insert_one(survey)
         return public(survey)
 
@@ -211,9 +218,78 @@ def create_app(database=None):
     def update(survey_id: str, body: SurveyUpdate, request: Request, user=Depends(current_user)):
         db = request.app.state.db
         survey = owned(db, survey_id, user)
-        if survey["status"] != "draft":
-            fail("已发布问卷的题目与设置已冻结，请使用基本信息接口", 409)
-        return mutate(db, survey, user, body.editRevision, prepare_survey(body), "draft")
+        return save_definition(db, survey, user, body.editRevision, body.operationKey,
+                               {"kind": "replace", "body": body.model_dump()},
+                               lambda: body.model_dump(exclude={"editRevision", "operationKey"}))
+
+    @app.post("/api/surveys/{survey_id}/questions/{question_id}/save-as-reusable", response_model=ReusableOut)
+    def export_question(survey_id: str, question_id: str, body: ExportQuestion, request: Request, user=Depends(current_user)):
+        db = request.app.state.db
+        survey = owned(db, survey_id, user)
+        q = next((q for q in survey["questions"] if q["id"] == question_id), None)
+        if not q:
+            fail("题目不存在", 404)
+        parent = None
+        if q.get("sourceVersionId"):
+            parent = ObjectId(q["sourceVersionId"])
+        return new_question(db, user, ReusableCreate(name=body.name, creationKey=body.operationKey,
+            content=QuestionContent(**public(content_of(q)))), parent=parent,
+            origin={"surveyId": survey["_id"], "localQuestionId": question_id},
+            key=f"export:{survey_id}:{question_id}:{body.operationKey}")
+
+    @app.post("/api/surveys/{survey_id}/question-instances", response_model=SurveyOut)
+    def add_instance(survey_id: str, body: InstanceAdd, request: Request, user=Depends(current_user)):
+        db = request.app.state.db
+        survey = owned(db, survey_id, user)
+        def build():
+            v = readable_version(db, body.versionId, user, selecting=True)
+            data = definition(survey)
+            number = 0
+            temporary = "new_instance_0"
+            while any(q["id"] == temporary for q in data["questions"]):
+                number += 1
+                temporary = f"new_instance_{number}"
+            data["questions"].append({"id": temporary, **public(v["content"]), "required": body.required,
+                "jumpRules": [], "sourceQuestionId": str(v["questionId"]), "sourceVersionId": str(v["_id"])})
+            return data
+        return save_definition(db, survey, user, body.editRevision, body.operationKey,
+                               {"kind": "add", "body": body.model_dump()}, build)
+
+    @app.post("/api/surveys/{survey_id}/questions/{question_id}/upgrade", response_model=SurveyOut)
+    def upgrade_instance(survey_id: str, question_id: str, body: InstanceUpgrade, request: Request, user=Depends(current_user)):
+        db = request.app.state.db
+        survey = owned(db, survey_id, user)
+        def build():
+            data = definition(survey)
+            q = next((q for q in data["questions"] if q["id"] == question_id), None)
+            if not q or not q.get("sourceVersionId"):
+                fail("可复用位置不存在", 404)
+            v = readable_version(db, body.versionId, user, selecting=True)
+            if str(v["questionId"]) != q["sourceQuestionId"]:
+                fail("目标版本必须属于同系列")
+            q.update(public(v["content"]))
+            q["sourceVersionId"] = str(v["_id"])
+            return data
+        return save_definition(db, survey, user, body.editRevision, body.operationKey,
+                               {"kind": "upgrade", "target": question_id, "body": body.model_dump()}, build)
+
+    @app.delete("/api/surveys/{survey_id}/questions/{question_id}", response_model=SurveyOut)
+    def remove_instance(survey_id: str, question_id: str, body: InstanceDelete, request: Request, user=Depends(current_user)):
+        db = request.app.state.db
+        survey = owned(db, survey_id, user)
+        def build():
+            data = definition(survey)
+            if not any(q["id"] == question_id for q in data["questions"]):
+                fail("位置不存在", 404)
+            data["questions"] = [q for q in data["questions"] if q["id"] != question_id]
+            if set(body.ruleUpdates) - {q["id"] for q in data["questions"]}:
+                fail("跳转调整包含不存在的位置")
+            for q in data["questions"]:
+                if q["id"] in body.ruleUpdates:
+                    q["jumpRules"] = [r.model_dump() for r in body.ruleUpdates[q["id"]]]
+            return data
+        return save_definition(db, survey, user, body.editRevision, body.operationKey,
+                               {"kind": "delete", "target": question_id, "body": body.model_dump()}, build)
 
     @app.patch("/api/surveys/{survey_id}/metadata", tags=["问卷管理"], response_model=SurveyOut)
     def metadata(survey_id: str, body: MetadataUpdate, request: Request, user=Depends(current_user)):

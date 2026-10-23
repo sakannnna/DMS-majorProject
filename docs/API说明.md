@@ -2,7 +2,7 @@
 
 API是页面与服务端交换数据的入口：例如网页点击“发布”，会发出带问卷编号和编辑版本的请求；服务端返回最新问卷或明确的错误。本文先给调用顺序和完整示例，再列准确的输入输出约定，供用户理解流程，也供开发者检查调用。
 
-字段类型、必填性由[请求模型](../app/models.py)、[输出模型](../app/contracts.py)与[路由](../app/main.py)生成[OpenAPI](http://127.0.0.1:8009/openapi.json)，可在[交互页面](http://127.0.0.1:8009/docs)逐项查询。本文是这些契约的可读说明，不另存一套JSON schema；下文已解释主要输入、输出与空值，阅读时不必先翻代码。须先按[README](../README.md)启动服务。
+字段类型、必填性由[请求模型](../app/models.py)、[输出模型](../app/contracts.py)与[路由](../app/main.py)生成[OpenAPI](http://127.0.0.1:8009/openapi.json)，可在[交互页面](http://127.0.0.1:8009/docs)逐项查询。本文是这些契约的可读说明，不另存一套JSON schema；下文已解释主要输入、输出与空值，阅读时不必先翻代码。须先按[README](../README.md)启动服务；第一阶段旧库先做显式升级。当前仅实现第二阶段第一部分，共享、题库、使用追踪及跨卷统计接口尚不存在。
 
 ## 认证与请求约定
 
@@ -21,6 +21,9 @@ Cookie用于把后续请求关联到同一浏览器；csrf是写操作需要附�
 | 生命周期 | PATCH `/api/surveys/{survey_id}/metadata`；POST `…/publish`、`…/close` | 创建者；更新需当前 editRevision；关闭后无法重新发布 |
 | 草稿预览 | POST `/api/surveys/{survey_id}/preview` | 创建者；返回问卷展示数据与遍历结果，绝不写答卷 |
 | 填写 | GET `/api/fill/{token}`；POST `…/walk`、`…/submit` | 所有填写者均须登录；问卷需开放；提交还检查次数 |
+| 独立题目 | GET/POST `/api/reusable-questions`；GET/PATCH `…/{qid}` | 仅所有者；列表可按archived筛选及skip/limit分页 |
+| 不可变版本 | GET/POST `…/{qid}/versions`；POST `…/restore`、`…/recover-save`；GET `/api/question-versions/{vid}`、`…/history` | 仅所有者；保存或恢复创建新版本，不覆盖已有内容 |
+| 题目选入与旧题复用 | POST `/api/surveys/{sid}/question-instances`、`…/questions/{localId}/upgrade`、`…/save-as-reusable`；DELETE `…/questions/{localId}` | 仅问卷所有者；选入/换版/删除限草稿，旧卷另存题目可用于发布/关闭卷 |
 | 统计 | GET `/api/surveys/{survey_id}/stats`、`…/questions/{question_id}/stats` | 仅创建者；单题内容支持 skip、limit 分页 |
 
 创建草稿后，通过 PUT 完整保存题目、选项、校验和规则；发布前检查完整定义。修改时提供最近读取的 editRevision，冲突后重新读取，不强行覆盖。发布后只允许 metadata 接口更新标题、说明和截止，题目与匿名、重复设置被冻结；metadata 模型拒绝额外字段。已关闭问卷即使改截止也不会重开。
@@ -120,6 +123,57 @@ $null = Write-Api 'POST' '/api/logout' @{}
 
 再如有数字题q2，读取 `/api/surveys/{id}/questions/q2/stats?skip=20&limit=20` 表示跳过前20条再取至多20条；answered与respondentCount仍是整题总数，不是这一页条数。hasMore=false表示这次查询时已到末页；平均值也是整题有效答卷平均。各页之间有新提交时不承诺固定快照。
 
+## 第二阶段第一部分：独立题目与选入
+
+独立题目是可重复选用的内容；问卷中的一次选入是独立位置。下面仅描述已实现契约，完整业务规则归[需求与设计](需求与设计.md)。所有写请求仍需登录Cookie与CSRF，日期/数字类型沿用上文。
+
+| 操作 | 主要输入与响应 |
+| --- | --- |
+| 创建题目POST `/api/reusable-questions` | name、creationKey（8～80位字母数字下划线短横线）；可附content，saveVersion默认true：有content时立即保存首版，无content时建立待编辑系列；saveVersion=false保存可编辑草稿。返回201 ReusableOut，包含最新editRevision |
+| 修改题目PATCH `…/{qid}` | editRevision；name/archived按需提供；draft包含baseVersionId及content，显式draft=null清空草稿。仅修改所给字段；有待完成保存时409 |
+| 保存版本POST `…/{qid}/versions` | editRevision、creationKey、baseVersionId（首版null；后续为本系列旧版ID）、content；返回200 VersionOut。同键同内容取回原版，同键改内容409；不能替代修订检查开启另一操作 |
+| 版本列表/读取/历史 | 版本列表skip/limit，默认20上限100，按versionNo倒序；GET `/api/question-versions/{vid}`取该版。history返回nodes，每项versionId、accessible、可空version；遇不可访问来源停止；最多100个可读节点，另可含一个不可访问来源占位；有nextVersionId时继续 |
+| 恢复历史POST `…/{qid}/restore` | editRevision、creationKey、versionId；返回新VersionOut，parentVersionId为选中的旧版，不改问卷 |
+| 完成中断POST `…/{qid}/recover-save` | 当前editRevision、operationId；仅按服务端固定预留完成，返回同一VersionOut，不要求原请求体。已完成的相同operationId可取回结果；损坏预留409，不丢弃记录 |
+| 选入POST `/api/surveys/{sid}/question-instances` | editRevision、operationKey、versionId、required（默认true）；追加独立位置并返回SurveyOut。再选同版用新意图/修订，不能复用上次位置ID |
+| 主动换版POST `…/questions/{localId}/upgrade` | editRevision、operationKey、versionId；仅本系列版本，保留卷内ID、必答和跳转，并重新验证全卷；错误不写库。必答不通过此接口覆盖 |
+| 删除DELETE `…/questions/{localId}` | JSON正文含editRevision、operationKey；可附ruleUpdates（位置ID→替换的完整跳转规则数组），以便同批消除悬空引用；返回SurveyOut |
+| 原卷题另存POST `…/questions/{localId}/save-as-reusable` | name、operationKey；返回ReusableOut，另建本人题目及首版，不修改原位置/答卷，不带必答/跳转；原位置有可复用来源时保留父关系并检查可新用权限 |
+
+content仅包含kind、title、options、validation；字段结构沿用下文题目说明，不包含required、id或jumpRules。ReusableOut含id、name、archived、editRevision、draft、pendingSave、latestVersion及创建更新时间，后面三者可null。VersionOut含id、questionId、versionNo、parentVersionId（可null）、content和createdAt，不输出内部摘要、请求键或所有者凭据。pendingSave仅向所有者返回operationId、预留versionId/versionNo、固定content及needsRepair；缺损内容为null，界面不得自行拼凑恢复内容。
+
+完整PUT继续支持普通题。可复用位置提交两项来源及完整展示结构；已有位置必须保留固定内容，改版由服务端读取目标版，新位置必须带operationKey。新位置的输入id是批内临时标识，服务端生成正式ID并转换该批跳转目标，idMap告知映射。普通题导出不会自动把原位置绑定为V1；若希望选用新资源，新增一个位置。POST创建问卷仍接收普通题，先创建草稿再选入版本。
+
+位置写入的幂等范围是同问卷、同基准editRevision、同operationKey。当前仅保存最新一次回执；同键同输入且没有后续修改时返回原成功结果，同键不同输入409。之后任何成功修改都会推进修订并使旧重放失效，旧请求409，须刷新后开始新意图；删除后重加生成新ID并重查权限。旧普通题PUT可不带operationKey，仍按原修订冲突处理。**这不缩短答卷submit的持久幂等保证。**
+
+### 调用示例：数字题V1重复选入
+
+沿用前面PowerShell示例的$base、$web、$headers和Write-Api函数；账号已登录。下列示例说明完整请求顺序，未单独宣称这些PowerShell片段实跑过；对应API和网页实际验证见T28—T34。
+
+```powershell
+$q = Write-Api 'POST' '/api/reusable-questions' @{
+    name='年龄'; creationKey=[guid]::NewGuid().ToString('N')
+    content=@{kind='number'; title='你的年龄'; validation=@{minimum='0'; maximum='120'; integer=$true}}
+}
+$s = Write-Api 'POST' '/api/surveys' @{title='复用示例'}
+$s = Write-Api 'POST' "/api/surveys/$($s.id)/question-instances" @{
+    editRevision=$s.editRevision; operationKey=[guid]::NewGuid().ToString('N'); versionId=$q.latestVersion.id
+}
+$s = Write-Api 'POST' "/api/surveys/$($s.id)/question-instances" @{
+    editRevision=$s.editRevision; operationKey=[guid]::NewGuid().ToString('N'); versionId=$q.latestVersion.id; required=$false
+}
+# $s.questions[0].id 与 $s.questions[1].id 不同；答案须用这些卷内ID。
+$q = Invoke-RestMethod "$base/api/reusable-questions/$($q.id)" -WebSession $web
+$v2 = Write-Api 'POST' "/api/reusable-questions/$($q.id)/versions" @{
+    editRevision=$q.editRevision; creationKey=[guid]::NewGuid().ToString('N'); baseVersionId=$q.latestVersion.id
+    content=@{kind='number'; title='你的年龄'; validation=@{minimum='0'; maximum='100'; integer=$true}}
+}
+# 旧问卷仍为V1；仅主动换第一处为V2。
+$s = Write-Api 'POST' "/api/surveys/$($s.id)/questions/$($s.questions[0].id)/upgrade" @{
+    editRevision=$s.editRevision; operationKey=[guid]::NewGuid().ToString('N'); versionId=$v2.id
+}
+```
+
 ## 如何理解错误
 
 | 状态 | 含义及处理 |
@@ -160,9 +214,9 @@ $null = Write-Api 'POST' '/api/logout' @{}
 | GET /api/surveys/{id}/stats | StatsOut：total、respondentCount、questions | total为份数整数，respondentCount为去重账号数整数；questions为单题统计数组 |
 | GET /api/surveys/{id}/questions/{qid}/stats | 单个QuestionStatsOut | 与整卷questions元素相同，不再包装questions或total |
 
-管理问卷的公共部分 SurveySummaryOut 为：id、ownerId、token、title、description、deadline、allowAnonymous、allowMultiple、status、editRevision、definitionVersion、schemaVersion、createdAt、updatedAt。SurveyOut在此基础上增加questions。deadline为null表示不限；status为draft/published/closed；description为空时返回空字符串。
+管理问卷的公共部分 SurveySummaryOut 为：id、ownerId、token、title、description、deadline、allowAnonymous、allowMultiple、status、editRevision、definitionVersion、schemaVersion、createdAt、updatedAt。SurveyOut在此基础上增加questions和idMap（临时位置ID到服务端正式位置ID的映射；无新增映射时为空对象）。deadline为null表示不限；status为draft/published/closed；description为空时返回空字符串。
 
-题目结构为id、kind、title、required、options、validation、jumpRules。kind为single/multiple/text/number；无选项或规则时返回[]。选项含id和label。validation始终包含minChoices、maxChoices、minLength、maxLength、minimum、maximum、integer；未设置的上下限返回null，integer返回布尔值。minimum和maximum非空时是十进制字符串。规则含conditions和target；条件含op和value，value为字符串或字符串数组，target为稳定题目标识或END。完整约束以模型为准。
+题目结构为id、kind、title、required、options、validation、jumpRules。kind为single/multiple/text/number；无选项或规则时返回[]。选项含id和label。validation始终包含minChoices、maxChoices、minLength、maxLength、minimum、maximum、integer；未设置的上下限返回null，integer返回布尔值。minimum和maximum非空时是十进制字符串。规则含conditions和target；条件含op和value，value为字符串或字符串数组，target为稳定题目标识或END。管理读取的每题另含sourceQuestionId/sourceVersionId，普通题均为null，可复用位置同时非空；填写及预览通过PublicQuestion剔除来源与管理字段。完整约束以模型为准。
 
 | 单题kind | 公共字段之外必定返回 | 不返回或为空 |
 | --- | --- | --- |
@@ -182,6 +236,8 @@ $null = Write-Api 'POST' '/api/logout' @{}
 | --- | --- | --- |
 | api、boot、account | ErrorOut、SessionOut | 错误兼容字符串和数组；user先判断null；csrf用于后续写请求 |
 | list、renderEditor、collect、save | SurveySummaryOut、SurveyOut及嵌套题目 | 列表不读questions；编辑只使用完整问卷；写操作后使用返回的最新版本；选择题options及规则数组始终存在 |
+| reusableList、reusableEditor、reusableDetailPage | ReusableOut、VersionOut、HistoryOut | latestVersion/draft/pendingSave先判null；待恢复项未形成首版时不可选；历史节点先判accessible，不假设来源可读 |
+| picker、rq-pick、rq-upgrade-picker、intent | VersionOut、SurveyOut及idMap | 选准确版本，选入后用服务端返回的卷内ID；固定内容只读，必答/跳转另配；失败重发同一意图保留请求键，不把版本ID当答案questionId |
 | startFill、renderFill、constraintText、answerText | FillOut或PreviewOut.survey、Question | 两种survey共同部分可用于渲染，预览不得读取deadline或definitionVersion；validation未设值用null默认处理 |
 | nextAnswer、revise | WalkOut或PreviewOut.walk | preview多一层walk包装；nextQuestionId=null进入确认，path用于返回修改；不将ready当成保存成功 |
 | submit-answer | SubmitOut | 当前页面只依据HTTP成功展示提交成功，不读取message或responseId；这些字段仍供调用者和重试使用 |
