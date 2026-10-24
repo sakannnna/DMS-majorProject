@@ -181,7 +181,7 @@ Git 标签 `stage1-v1` 保存第一阶段早期交付基线，不含之后所有
 
 ## 第二阶段交付核对
 
-第二阶段功能实现为0ecc601，历史AI日志提交为ef27f33；最终代码、前端整理、报告和交付说明以 `stage2-final` 标签标记。源码及报告哈希和实际验证范围见docs/evidence/stage2-delivery-version.json。
+第二阶段功能实现为0ecc601，历史AI日志提交为ef27f33；`stage2-final` 标签保留功能及验证代码的提交版，报告等后续文字修订以main分支最新版本为准。源码及报告哈希和实际验证范围见docs/evidence/stage2-delivery-version.json。
 
 | 作业提交项 | 包内位置 |
 | --- | --- |

@@ -1,7 +1,7 @@
 {
   "date": "2026-10-24",
   "baseCommit": "ef27f3321701c91d63bb7374a3549e48cc62248b",
-  "workingTree": "Final release source, reviewed report and PDF; release tagged stage2-final. M106 full regression and O10 selected portability checks remain separately identified.",
+  "workingTree": "Report readability revision after initial stage2-final submission; runtime and tests unchanged. Current source/report/PDF hashes identify the revised main-branch delivery.",
   "sourceSha256": {
     "app/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
     "app/contracts.py": "0a07246ff2a165fec50a7ecb120dcba6434992f4bfe9c16823e8eb07f99efa41",
@@ -19,9 +19,9 @@
     "docs/API说明.md": "ce83e10905580ad05d1184b0a3826ac366517d55150cd1d7ac9ecbe786430dd8",
     "docs/工作与记录规范.md": "133d25a03a76959bd87fd54e97620803f748e3238469a5c966b204a6df077fc1",
     "docs/测试记录.md": "5547ba21ae2f83a583886653e8f9f16b77207e0a91e1f18ca8c471cccef02b78",
-    "docs/阶段二报告.md": "8aac020b051bfaab8e55a1638fd244ba0ff18a8f47139db0d533e026c6c9ab05",
+    "docs/阶段二报告.md": "d0ae44e452bc15beb013c3a5b4443bd9d1766af9200c268fcc0c16e862eddf5d",
     "docs/需求与设计.md": "cdfe61352f607e26da16f44357f1969d9eced1c9c4e8441eea7a447f99a003b1",
-    "README.md": "991f87c4b20fb7ffc7636587a981a542bb5254fc0e54ea866d7593f811b2048a",
+    "README.md": "2c47b1728c2a0b38fd6e1eed696482043f08c3a7f59cf66c2af6127f2ed14291",
     "requirements.txt": "73d967cf9428575b4fa085c3500d748ae226264733055b637ccdbff58ff60523",
     "scripts/check-docs.py": "8cc46a43b33daccf8e0ad719dda5f22394382402647222b8054441434933dd54",
     "scripts/demo.py": "145dffc50918405cda3480b365d7ea485080326df19ee2b545bd5eea88045e8a",
@@ -35,8 +35,8 @@
     "docs/evidence/stage2-portability-web.json": "e7d42bc99b9a7db311bec08af8119b61472ea209f2fa4613faa700fd9c74bbde",
     ".gitignore": "32a9e889617b295fd0419db3bbe984dc0c6ec591e7b898998948aebc44b67b3b"
   },
-  "reportSourceSha256": "8aac020b051bfaab8e55a1638fd244ba0ff18a8f47139db0d533e026c6c9ab05",
-  "reportPdfSha256": "c8c5428dd3d9cc7e20297e6820c526ba7fa6a2d2090fbed52335a84bfe3d4aed",
+  "reportSourceSha256": "d0ae44e452bc15beb013c3a5b4443bd9d1766af9200c268fcc0c16e862eddf5d",
+  "reportPdfSha256": "142db5566c412c50ee92e306ffedff7e907b67e61c93760ea0ad35f81fb9a3be",
   "finalRegression": {
     "name": "pytest",
     "errors": "0",
@@ -126,5 +126,12 @@
     "browserFlow": "new isolated account; create, publish, fill, confirm, submit and statistics; expected 1/1 with options 1/0 matched",
     "noNewFullRegression": true
   },
-  "releaseRef": "stage2-final"
+  "releaseRef": "main",
+  "implementationRef": "stage2-final",
+  "reportRevision": {
+    "date": "2026-10-24",
+    "scope": "Reader-facing report wording; internal commit/hash/batch notes removed from report, core design and measured results retained. Five pages rendered and reviewed.",
+    "runtimeChanged": false,
+    "testsRerun": false
+  }
 }
