@@ -1,7 +1,7 @@
 {
   "date": "2026-10-24",
   "baseCommit": "ef27f3321701c91d63bb7374a3549e48cc62248b",
-  "workingTree": "Report readability revision after initial stage2-final submission; runtime and tests unchanged. Current source/report/PDF hashes identify the revised main-branch delivery.",
+  "workingTree": "First-page PDF layout revision only; report source, runtime and test results unchanged. Pages2-5 retained exactly.",
   "sourceSha256": {
     "app/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
     "app/contracts.py": "0a07246ff2a165fec50a7ecb120dcba6434992f4bfe9c16823e8eb07f99efa41",
@@ -36,7 +36,7 @@
     ".gitignore": "32a9e889617b295fd0419db3bbe984dc0c6ec591e7b898998948aebc44b67b3b"
   },
   "reportSourceSha256": "d0ae44e452bc15beb013c3a5b4443bd9d1766af9200c268fcc0c16e862eddf5d",
-  "reportPdfSha256": "142db5566c412c50ee92e306ffedff7e907b67e61c93760ea0ad35f81fb9a3be",
+  "reportPdfSha256": "f6f4c9f607d1640e02fe335f556e505561bd5e02323a49d6821857b462532d8c",
   "finalRegression": {
     "name": "pytest",
     "errors": "0",
@@ -133,5 +133,16 @@
     "scope": "Reader-facing report wording; internal commit/hash/batch notes removed from report, core design and measured results retained. Five pages rendered and reviewed.",
     "runtimeChanged": false,
     "testsRerun": false
+  },
+  "pdfLayoutRevision": {
+    "date": "2026-10-24",
+    "scope": "Page1 title enlarged with two-line layout; increased leading and spacing in metadata, introduction and summary table. Text unchanged.",
+    "unchangedPages": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "verification": "Pages2-5 decoded content streams, extracted text and rendered pixels are identical to previous report. Final page1 rendering identical to reviewed candidate."
   }
 }
