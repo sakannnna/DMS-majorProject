@@ -1,7 +1,7 @@
 {
   "date": "2026-10-24",
   "baseCommit": "ef27f3321701c91d63bb7374a3549e48cc62248b",
-  "workingTree": "First-page PDF layout revision only; report source, runtime and test results unchanged. Pages2-5 retained exactly.",
+  "workingTree": "Report evolution comparison and MongoDB rationale completed; user-revised section6 retained exactly; O development/testing added to AI log. Runtime and measured test results unchanged.",
   "sourceSha256": {
     "app/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
     "app/contracts.py": "0a07246ff2a165fec50a7ecb120dcba6434992f4bfe9c16823e8eb07f99efa41",
@@ -19,7 +19,7 @@
     "docs/API说明.md": "ce83e10905580ad05d1184b0a3826ac366517d55150cd1d7ac9ecbe786430dd8",
     "docs/工作与记录规范.md": "133d25a03a76959bd87fd54e97620803f748e3238469a5c966b204a6df077fc1",
     "docs/测试记录.md": "5547ba21ae2f83a583886653e8f9f16b77207e0a91e1f18ca8c471cccef02b78",
-    "docs/阶段二报告.md": "d0ae44e452bc15beb013c3a5b4443bd9d1766af9200c268fcc0c16e862eddf5d",
+    "docs/阶段二报告.md": "83d0696e5bed92df3859fe661f4d494acabee37f04bade2fa9e064ac90fc74ac",
     "docs/需求与设计.md": "cdfe61352f607e26da16f44357f1969d9eced1c9c4e8441eea7a447f99a003b1",
     "README.md": "2c47b1728c2a0b38fd6e1eed696482043f08c3a7f59cf66c2af6127f2ed14291",
     "requirements.txt": "73d967cf9428575b4fa085c3500d748ae226264733055b637ccdbff58ff60523",
@@ -31,12 +31,12 @@
     "scripts/upgrade-db.py": "2346988df52093186dff6a6e8126dc9eafb213f2d5f9ba37e4c3bc21a6c96d1e",
     "start.bat": "93d0782f76387dce1160dab2b79f9aae1a1c6a06ebf2ebc681a3dd7bebbadca1",
     "tests/test_system.py": "df3c85dadb650b362c8036e167c91b27702f831d0d3c436afa3ac1f4c095525b",
-    "docs/AI使用日志.md": "4a44e06ef946434764bbc6f18b5a556cb7cccd365a5bc74126164823aa6adc65",
+    "docs/AI使用日志.md": "99026d805710259fb75e3875d70c73c57738226a0cf6314085517d524213b39c",
     "docs/evidence/stage2-portability-web.json": "e7d42bc99b9a7db311bec08af8119b61472ea209f2fa4613faa700fd9c74bbde",
     ".gitignore": "32a9e889617b295fd0419db3bbe984dc0c6ec591e7b898998948aebc44b67b3b"
   },
-  "reportSourceSha256": "d0ae44e452bc15beb013c3a5b4443bd9d1766af9200c268fcc0c16e862eddf5d",
-  "reportPdfSha256": "f6f4c9f607d1640e02fe335f556e505561bd5e02323a49d6821857b462532d8c",
+  "reportSourceSha256": "83d0696e5bed92df3859fe661f4d494acabee37f04bade2fa9e064ac90fc74ac",
+  "reportPdfSha256": "733ef81cef800b25e5bc4d1da34a6c8268766d34712e64f0b736ffe4745cd14f",
   "finalRegression": {
     "name": "pytest",
     "errors": "0",
@@ -55,15 +55,15 @@
     "T49 five real PowerShell lookup checks passed, including Chinese/space paths, parameter priority, numeric version ordering and invalid path.",
     "T50 real IAB workflow on empty separate DB, actual formal submission and MongoDB answer check passed. Temporary tab/server/database cleaned.",
     "Python/JavaScript/PowerShell syntax and document links checked before packaging.",
-    "M/N preview versus formal submission boundaries and AI log wording corrected; no new AI log entry.",
-    "Final reviewed report exported with six tables and a vector relationship diagram; all five PDF pages rendered and visually checked; text and GitHub link verified. No new business test run for document/export-only changes."
+    "M/N preview versus formal submission boundaries retained; AI log now also summarizes already executed O startup/test work.",
+    "Current reviewed report exported with seven tables and a vector relationship diagram; all six PDF pages rendered and checked. User-edited section6 matches MD exactly; approved first-page layout retained. No new business tests run for document changes."
   ],
   "limits": [
     "Last full106 regression belongs to M; O changes startup discovery and adds5 parameter checks, validated by selected10 rather than all111 collected checks.",
     "M used previews/API-prepared responses; N/T48 completed five formal browser submissions; O/T50 separately completed one formal browser submission in an empty test DB.",
     "O clean install uses same Windows host and existing MongoDB server process; not a physical second PC, macOS/Linux, old-browser or capacity certification.",
     "O app started with documented manual uvicorn command on alternate port; lookup checks do not prove fresh-machine double-click launch.",
-    "No business scope, backend authorization or statistics semantics changed; no new AI log entry; final Git submission handled separately from historical test execution."
+    "No business scope, backend authorization or statistics semantics changed; O AI log entry summarizes existing work, and report/log edits do not constitute a new test run."
   ],
   "packageVerification": "Run scripts/package-delivery.py against these hashes; ZIP comment identifies historical HEAD and this evidence. No archive hash inside its own content.",
   "previousKVersion": "stage2-delivery-K-version.json",
@@ -77,12 +77,11 @@
   },
   "aiLogUpdate": {
     "date": "2026-10-24",
-    "authorization": "User explicitly requested updating AI log",
     "covers": [
-      "L manual feedback fixes",
-      "M frontend interaction redesign and validation",
-      "N original manual acceptance steps7/8/9"
+      "Previously recorded L/M/N work",
+      "O startup portability code and existing validation"
     ],
+    "scope": "Concise task, AI implementation and verified results; no raw user quotes or new test claims.",
     "systemCodeChanged": false,
     "businessTestsRerun": false
   },
@@ -130,19 +129,15 @@
   "implementationRef": "stage2-final",
   "reportRevision": {
     "date": "2026-10-24",
-    "scope": "Reader-facing report wording; internal commit/hash/batch notes removed from report, core design and measured results retained. Five pages rendered and reviewed.",
+    "scope": "Added stage1/new-requirement/program/data/compatibility comparison and explicit MongoDB vs relational-structure rationale. Protected user-edited section6 retained byte-for-byte and matched against PDF text. Six pages rendered and reviewed; approved first page retained.",
     "runtimeChanged": false,
-    "testsRerun": false
+    "testsRerun": false,
+    "protectedSection6Sha256": "d0be9ad62990f6d6509dce2becb29a7a4e22d4b00da4ba3fc5b9df676cb38f43",
+    "pdfPages": 6
   },
   "pdfLayoutRevision": {
     "date": "2026-10-24",
-    "scope": "Page1 title enlarged with two-line layout; increased leading and spacing in metadata, introduction and summary table. Text unchanged.",
-    "unchangedPages": [
-      2,
-      3,
-      4,
-      5
-    ],
-    "verification": "Pages2-5 decoded content streams, extracted text and rendered pixels are identical to previous report. Final page1 rendering identical to reviewed candidate."
+    "scope": "Approved first-page layout retained exactly. Later pages reflow for additional confirmed section6 and report changes.",
+    "verification": "First-page content and rendered pixels unchanged; MD section6 unchanged and PDF text synchronized."
   }
 }
