@@ -1,4 +1,4 @@
-"""Public response boundary. Never expose newly added storage fields implicitly."""
+"""接口输出采用明确的响应模型，避免新增数据库字段被意外暴露。"""
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field

@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-23",
+  "baseCommit": "ef27f3321701c91d63bb7374a3549e48cc62248b",
+  "workingTree": "Delivery maintenance, no added business scope; exact file hashes authoritative. Not committed this turn.",
+  "sourceSha256": {
+    "app/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "app/contracts.py": "49d001f38e03a858d09f68ec2129a9ffbc083f572637b8e82b4c24d29da0a8f3",
+    "app/database.py": "a5058f6f93fe5cd6cb242900875269b295ebe73055977fe5bc63a970ac9d3767",
+    "app/logic.py": "2bab3e7d86b8985a6aaa1321f777ddf537fce3a8e9337ec05eadb53c73ec2991",
+    "app/main.py": "4a81d3e036846934b673b14f92808757ed2cc0c8ab341f77f3a59126276dbfc5",
+    "app/models.py": "975f0596610b6861b4ceb0e5700120cfe8b1f6ee7f83d3401c98251d469ae39c",
+    "app/question_management.py": "f9ea6a9412fb7d3894a94981ef578db5a9615ffdf3ece5416d3761444e142bc3",
+    "app/reusable.py": "02ea431f9eaff68a0c16795642e358a43049c67f5d9e6271881bf036877bcb80",
+    "app/security.py": "156c76b8d1bac67cd5688014e2f102a2a431b8265fd4642d0fc77ceff6c69fae",
+    "app/static/app.js": "5415f85909660a8618fa373e8fc64debd1cc78fab08e39fb872c82f4ad8516f3",
+    "app/static/style.css": "6dc7b86a1b8e88bcae46e7074337ca532161824b3cfb4db2860040a19370b9b1",
+    "app/survey_questions.py": "87fa837935b5b826add1c24df1b4c67e909e53e64611cbb03cea24db91a90ef6",
+    "app/templates/index.html": "ad034dbf6ca6d6a43207fd51c147c6706489a67e73b26160a843ed2ccb772601",
+    "docs/API说明.md": "7c04cc71faba0fda89fb881394a1751ce7efe21dc9b2f40550a658fa67bc6c6f",
+    "docs/工作与记录规范.md": "bcbdb02cea849be9cd0104628f6dc4b810c4e03f8e11a063f10d0165b37a4d0a",
+    "docs/测试记录.md": "22a517707515151187227022b7e2ee7466ed6a1e8da1c49a0f990d3315c7c3e4",
+    "docs/阶段二报告.md": "aa48b7f88d3e63ab8036ea9151edd3e098047c1e038c87271efbb4beb54617f0",
+    "docs/需求与设计.md": "1b96f7ee943ee6d14a07da1e3795c17d1d6a044691586f52f787299ef2cc873a",
+    "README.md": "53699dce12d603114e0332e873e148f58e49f810573b8565e3cf6ac46571daaf",
+    "requirements.txt": "73d967cf9428575b4fa085c3500d748ae226264733055b637ccdbff58ff60523",
+    "scripts/check-docs.py": "1066d3622f7aaebee4a2fd000f63bed2e022e596daef69d845fddc055a71c625",
+    "scripts/demo.py": "d90b6810915fe9e31b3d03dda44989b5ef4cc794914fccbc127c439660c63e30",
+    "scripts/package-delivery.py": "7b843b649ceb52677bbceda25006608afe7a24225ac5d2bd7a33f791d38ae6c4",
+    "scripts/start-db.ps1": "a9fc274245385510c24efe6b918272f6817ba3a06a330e7d6e6798a9d651a866",
+    "scripts/start.py": "c6c7511f4fe396675bc8ad9b02014157e0f950d8c0f72c1777c118cec518cc0a",
+    "scripts/upgrade-db.py": "1b157a957fb55fcab68cbc8a9ff75d2c1526a0e894ac9f7b3ab95a2dc886f03a",
+    "start.bat": "93d0782f76387dce1160dab2b79f9aae1a1c6a06ebf2ebc681a3dd7bebbadca1",
+    "tests/test_system.py": "c83fd29deb48ba335aa8a585f53082a89358b1489dc7891180b141fa18e2c555"
+  },
+  "reportSourceSha256": "aa48b7f88d3e63ab8036ea9151edd3e098047c1e038c87271efbb4beb54617f0",
+  "reportPdfSha256": "ba1e3e68047f707861c091474ba998325b1cbf051e7985bc81a20b4b9ace00c1",
+  "finalRegression": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "104",
+    "time": "146.493",
+    "timestamp": "2026-10-23T22:51:00.713117+08:00",
+    "hostname": "faint"
+  },
+  "pytestReportedSeconds": 146.54,
+  "checks": [
+    "104 complete tests passed; T42 mocked launcher HTTP; T43 Node real frontend functions",
+    "node --check",
+    "pip check: no broken requirements",
+    "Python compileall",
+    "Original migration/restore/old-behavior regression retained",
+    "PDF five pages rendered and reviewed; no system code changed after final regression"
+  ],
+  "limits": [
+    "No new full browser pass",
+    "No pressure limit, public hosting or new business capability",
+    "ZIP includes sanitized historical Git metadata and current working files; excludes local database/backup/venv/temp/cache"
+  ],
+  "packageVerification": "Run scripts/package-delivery.py against these hashes; ZIP comment identifies historical HEAD and this evidence. No archive hash inside its own content."
+}

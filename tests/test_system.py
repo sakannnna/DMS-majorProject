@@ -1,4 +1,4 @@
-"""Real MongoDB integration tests. All test databases are generated and isolated."""
+"""使用真实 MongoDB 的集成测试，测试库随机生成并与业务库隔离。"""
 import os
 import uuid
 import hashlib
@@ -52,7 +52,7 @@ def env():
             owner = Browser(app).account("owner")
             yield db, app, owner
     finally:
-        # Also clean this exact generated database when startup/setup fails before yield.
+        # 即使初始化在进入测试前失败，也只清理本次随机生成的测试库。
         if owner is not None:
             owner.client.close()
         assert name.startswith("survey_course_test_") and len(name) == len("survey_course_test_") + 32
@@ -285,8 +285,7 @@ def test_T09_concurrent_one_user_and_multiple_users(env):
     db, app, owner = env
     s = publish(owner, create(owner))
     readers = [Browser(app).account(f"reader{x}") for x in range(4)]
-    # Each request uses its own HTTP client; same credentials/cookies model concurrent browser tabs.
-    # Plain clients share the already-started app without rerunning its lifespan.
+    # 各请求使用独立客户端模拟同账号多标签页并发，共用已启动应用，避免重复初始化。
     def send(pair):
         source, body = pair
         client = TestClient(app)
@@ -408,7 +407,7 @@ def test_T19_response_contracts_and_frontend_fields(env):
     preview = owner.request("POST", f"/api/surveys/{s['id']}/preview", {"answers": []}).json()
     assert set(preview) == {"survey", "walk"}
     assert preview["walk"] == {"path": ["q1"], "nextQuestionId": "q1", "ready": False}
-    assert "deadline" not in preview["survey"]  # Frontend must not assume fill and preview are identical.
+    assert "deadline" not in preview["survey"]  # 填写与预览的输出契约不同，前端不能假定两者字段完全一致。
     s = publish(owner, s)
     fill = owner.request("GET", f"/api/fill/{s['token']}").json()
     assert {"deadline", "definitionVersion", "questions", "allowAnonymous"} <= fill.keys()
@@ -465,7 +464,7 @@ def test_T22_statistics_pages_no_duplicates_or_omissions(env):
         r = owner.request("POST", f"/api/fill/{s['token']}/submit", body)
         assert r.status_code == 200
         ids.append(ObjectId(r.json()["responseId"]))
-    assert ids == sorted(ids)  # Declared fixture ordering, not the pagination response as oracle.
+    assert ids == sorted(ids)  # 预期顺序由准备数据时确定，不用接口当前返回结果反推正确答案。
     db.responses.update_many({"surveyId": ObjectId(s["id"])}, {"$set": {"submittedAt": datetime(2026, 10, 17, tzinfo=timezone.utc)}})
     for qid in ("q1", "q2"):
         actual = []
@@ -487,7 +486,7 @@ def test_T22_statistics_pages_no_duplicates_or_omissions(env):
 
 @contextmanager
 def measured_case(name, db):
-    """Write bounded evidence even when a request or an assertion fails."""
+    """请求或断言失败时也保存有限的验证证据。"""
     started = time.perf_counter()
     report = {"case": name, "database": db.name, "passed": False, "requestFailures": [],
               "baseCommit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
@@ -739,7 +738,6 @@ def test_T27_submission_counts_and_distinct_accounts(env):
         beta.client.close()
 
 
-# Stage two part one. Shared accounts/banks/cross-survey aggregation are deliberately absent.
 def reusable(owner, kind="number", **content):
     q = question(kind, validation={"minimum": "0", "maximum": "120", "integer": True} if kind == "number" else {})
     data = {k: q[k] for k in ("kind", "title", "options", "validation") if k in q}
@@ -876,7 +874,7 @@ def test_T31_interrupted_save_recover_without_original_request(env, monkeypatch,
         m.setattr(Collection, "insert_one" if failure == "insert" else "update_one", insert if failure == "insert" else update)
         with pytest.raises(RuntimeError, match="test injected"):
             reusable(owner)
-    # No original POST body/key is used again; recover through persisted owner state.
+    # 不重发原请求内容或操作键，仅凭已保存的所属用户状态恢复中断操作。
     fresh = Browser(app)
     assert fresh.request("POST", "/api/login", {"username": "owner", "password": PASSWORD}).status_code == 200
     q = fresh.request("GET", "/api/reusable-questions").json()[0]
@@ -938,7 +936,7 @@ def test_T33_explicit_upgrade_preserves_legacy_data_and_exports(env, tmp_path, m
     import types
     from app.database import upgrade
     db, app, owner = env
-    # A separate real stage-one database, initialized by the actual tagged program.
+    # 用标签对应的真实第一阶段程序初始化独立旧库，避免用新版代码伪造旧结构。
     legacy_db = db.client["survey_course_test_" + uuid.uuid4().hex]
     legacy = types.ModuleType("stage1_database")
     exec(subprocess.check_output(["git", "show", "stage1-final:app/database.py"]).decode("utf-8"), legacy.__dict__)
@@ -1000,7 +998,7 @@ def test_T33_explicit_upgrade_preserves_legacy_data_and_exports(env, tmp_path, m
             assert legacy_db.surveys.find_one() == old_s and legacy_db.responses.find_one() == old_r
             stats = client.get(f"/api/surveys/{s['id']}/stats").json()
             assert stats["total"] == 1 and stats["questions"][0]["average"] == "12"
-            # Same old submission still has its original idempotency identity.
+            # 升级前后的同键提交仍应识别为同一答卷。
             assert client.post(f"/api/fill/{s['token']}/submit", json=body).json()["replayed"]
             assert client.post(f"/api/fill/{s['token']}/submit", json=payload([{"questionId": "q1", "value": "14"}])).status_code == 200
             assert legacy_db.responses.count_documents({"surveyId": old_s["_id"]}) == 2
@@ -1111,7 +1109,6 @@ def test_T32_instance_limit_returns_validation_error_without_write(env):
     assert db.surveys.find_one({"_id": ObjectId(s["id"])}) == before
 
 
-# Stage two part two: expectations are fixed from the confirmed business rules.
 def share_with(owner, vid, name):
     r = owner.request("POST", f"/api/question-versions/{vid}/shares", {"username": name})
     assert r.status_code == 200, r.text
@@ -1165,7 +1162,7 @@ def test_T35_shared_revoke_preserves_existing_but_blocks_new(env, whole):
     assert receiver.request("POST", f"/api/question-versions/{v1['id']}/derive", {**body, "creationKey": "new-derived-key"}).status_code == 404
     assert receiver.request("POST", f"/api/surveys/{s['id']}/questions/{s['questions'][0]['id']}/save-as-reusable", {
         "name": "bypass", "operationKey": "no-export-bypass"}).status_code == 404
-    # Retained positions can still be arranged/published; owned derivatives survive.
+    # 撤销共享不影响已保存位置的编排发布，也不删除接收者已有的派生题。
     b = whole_body(s); b["questions"][0]["required"] = False
     saved = receiver.request("PUT", f"/api/surveys/{s['id']}", b)
     assert saved.status_code == 200
@@ -1177,7 +1174,7 @@ def test_T35_shared_revoke_preserves_existing_but_blocks_new(env, whole):
     assert "private newer" not in json.dumps(history)
     own_version, _ = add_version(receiver, d, {**d["latestVersion"]["content"], "title": "independent"}, d["latestVersion"]["id"])
     assert own_version["versionNo"] == 2
-    # Same admitted derivation retries return the same resource even after revocation.
+    # 已准入派生操作在撤销后重试，仍返回同一资源。
     assert receiver.request("POST", f"/api/question-versions/{v1['id']}/derive", body).json()["id"] == d["id"]
     assert owner.request("PUT", f"/api/question-versions/{v1['id']}/shares/{share['recipientId']}",
                          {"editRevision": share["editRevision"]}).status_code == 409
@@ -1224,7 +1221,7 @@ def test_T37_exact_numeric_aggregation_scope_pagination(env):
     s2,_=add_to(owner,create(owner,[],allowMultiple=True),v["id"]);s2=publish(owner,s2)
     a=Browser(app).account("numericA");b=Browser(app).account("numericB")
     submit_values(a,s1,["10","20"]);submit_values(a,s1,["30",None]);submit_values(a,s2,["40"],anonymous=False);submit_values(b,s2,["50"])
-    # Same version used by someone else, another version and a derivative must not enter scope.
+    # 排除他人问卷、其他版本和独立派生题，防止跨卷统计混入范围外答案。
     share_with(owner,v["id"],"numericB")
     foreign,_=add_to(b,create(b,[]),v["id"]);foreign=publish(b,foreign);submit_values(b,foreign,["100"])
     v2,_=add_version(owner,q,{**v["content"],"title":"age2"},v["id"])
@@ -1239,7 +1236,7 @@ def test_T37_exact_numeric_aggregation_scope_pagination(env):
     filtered=owner.request("GET",url+f"/stats?surveyId={s1['id']}").json()
     assert (filtered["answerCount"],filtered["responseCount"],filtered["respondentCount"] )==(3,2,1)
     assert owner.request("GET",url+f"/stats?surveyId={s1['id']}&surveyId={foreign['id']}").status_code==404
-    # Tie all submission times: full ordering must still preserve every local position.
+    # 故意让提交时间相同，检验分页排序仍能保留所有卷内位置且无重复。
     db.responses.update_many({}, {"$set":{"submittedAt":now()}})
     details=[];distribution=[]
     for skip in (0,2,4):
@@ -1268,7 +1265,7 @@ def test_T38_option_counts_are_entries_responses_accounts(env,kind):
     assert (r["answerCount"],r["responseCount"],r["respondentCount"])==(3,2,1)
     assert [(x["answerCount"],x["responseCount"],x["respondentCount"]) for x in r["options"]]==[(2,1,1),(1,1,1),(0,0,0)]
     assert owner.request("GET",f"/api/question-versions/{v['id']}/contents").status_code==422
-    # First-stage whole-survey count still means submissions, not entries.
+    # 第一阶段整卷统计仍按答卷份数计数，不改为回答条数。
     old=owner.request("GET",f"/api/surveys/{s['id']}/stats").json();assert old["total"]==2
 
 
@@ -1372,3 +1369,191 @@ def test_T36_archived_question_and_exact_history_scope(env):
     assert owner.request("POST",f"/api/question-versions/{v1['id']}/shares",{"username":"historyreader"}).status_code==409
     assert db.surveys.find_one({"_id":ObjectId(s["id"])})==before
     publish(reader,s)
+
+
+
+def test_T42_launcher_rejects_stage_one_service(monkeypatch):
+    import runpy
+    launch = runpy.run_path(str(Path(__file__).resolve().parents[1] / "scripts/start.py"))
+    class Response:
+        def __init__(self, paths): self.paths = paths
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def read(self):
+            return json.dumps({"info": {"title": "MongoDB 问卷系统"}, "paths": dict.fromkeys(self.paths, {})}).encode()
+    original = ["/api/session", "/api/surveys", "/api/fill/{token}/submit"]
+    with monkeypatch.context() as patch:
+        patch.setattr(launch["HTTP"], "open", lambda *args, **kwargs: Response(original))
+        assert launch["ready"]() is False
+        patch.setattr(launch["HTTP"], "open", lambda *args, **kwargs: Response(original + [
+            "/api/question-banks", "/api/shared-question-versions", "/api/question-versions/{vid}/stats"]))
+        assert launch["ready"]() is True
+
+
+def test_T43_frontend_version_fallback_preserves_errors():
+    import shutil
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node.js unavailable: frontend runtime check not executed")
+    script = r"""
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const source = fs.readFileSync('app/static/app.js', 'utf8');
+const apiCode = source.slice(source.indexOf('async function api('), source.indexOf('function account()'));
+const versionsCode = source.slice(source.indexOf('async function availableVersions('), source.indexOf('function pageButtons'));
+(async () => {
+  let calls = [];
+  const context = {me:null, csrf:'csrf', fetch:async(path) => {
+    calls.push(path);
+    return path.startsWith('/api/shared')
+      ? {ok:true, status:200, json:async()=>[{version:{id:'shared-v1'}}]}
+      : {ok:false, status:404, json:async()=>({detail:'denied'})};
+  }};
+  vm.createContext(context); vm.runInContext(apiCode + versionsCode, context);
+  const versions = await context.availableVersions('q');
+  assert.equal(versions[0].id,'shared-v1'); assert.equal(calls.length,2);
+  for (const status of [401,500]) {
+    calls=[];
+    context.fetch=async(path)=>{calls.push(path);return {ok:false,status,json:async()=>({detail:'original error'})};};
+    await assert.rejects(context.availableVersions('q'),err=>err.status===status && err.message==='original error');
+    assert.equal(calls.length,1);
+  }
+  calls=[];
+  context.fetch=async(path)=>{calls.push(path);throw new Error('network unavailable');};
+  await assert.rejects(context.availableVersions('q'),/network unavailable/);assert.equal(calls.length,1);
+})().catch(error=>{console.error(error);process.exitCode=1;});
+"""
+    result = subprocess.run([node, "-"], input=script, text=True, capture_output=True,
+                            cwd=Path(__file__).resolve().parents[1])
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_T46_picker_ignores_result_after_close():
+    """关闭选题弹窗后到达的读取结果不得再写已移除的节点。"""
+    import shutil
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node.js unavailable: picker lifecycle check not executed")
+    script = r"""
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync('app/static/app.js','utf8');
+const code=source.slice(source.indexOf('async function renderPicker('),source.indexOf('async function reusableAction('));
+(async()=>{
+  let finish;
+  const state={source:'mine',skip:0,required:true};
+  const ctx={pickerState:state,api:()=>new Promise(resolve=>{finish=resolve;}),
+    $:()=>{throw new Error('Closed picker must not query a removed panel');}};
+  vm.createContext(ctx);vm.runInContext(code,ctx);
+  const pending=ctx.renderPicker();
+  ctx.pickerState=null;
+  finish([]);
+  await pending;
+  // 另一弹窗已经打开时，旧请求也不能覆盖新的选题来源。
+  ctx.pickerState=state;
+  const replaced=ctx.renderPicker();
+  ctx.pickerState={source:'shared',skip:0};
+  finish([]);
+  await replaced;
+  assert.equal(ctx.pickerState.source,'shared');
+  // 快速切换详情页签后，旧共享列表不能覆盖当前统计面板。
+  const sharesCode=source.slice(source.indexOf('async function sharesPage('),source.indexOf('async function banksPage('));
+  const pageCtx={workspaceRequest:1,api:()=>new Promise(resolve=>{finish=resolve;}),
+    workspacePanel:()=>{throw new Error('Stale panel must not replace current page');}};
+  vm.createContext(pageCtx);vm.runInContext(sharesCode,pageCtx);
+  const shares=pageCtx.sharesPage('version-1');
+  pageCtx.workspaceRequest=2;
+  finish([]);
+  await shares;
+})().catch(error=>{console.error(error);process.exitCode=1;});
+"""
+    result = subprocess.run([node, "-"], input=script, text=True, encoding="utf-8",
+                            capture_output=True, cwd=Path(__file__).resolve().parents[1])
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+
+def test_T44_cancel_export_and_return_to_question():
+    import shutil
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node.js unavailable: UI-flow unit check not executed")
+    script = r"""
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync('app/static/app.js','utf8');
+const exportCode=source.slice(source.indexOf('async function exportReusable('),source.indexOf('function bankReturnContext('));
+const returnCode=source.slice(source.indexOf('async function returnFromBankSelection('));
+(async()=>{
+  for(const mode of ['cancel-name','cancel-confirm','success']){
+    const calls=[];
+    const ctx={survey:{id:'s',status:'draft',questions:[{id:'q',title:'age'}]},
+      collect:()=>calls.push('collect'),requestText:async()=>mode==='cancel-name'?null:'saved name',
+      confirm:()=>mode!=='cancel-confirm',notice:x=>calls.push(x),
+      save:async opts=>{assert.equal(opts.quiet,true);calls.push('save draft');},
+      intent:async()=>calls.push('export')};
+    vm.createContext(ctx);vm.runInContext(exportCode,ctx);await ctx.exportReusable(0);
+    if(mode.startsWith('cancel')){
+      assert.equal(calls.includes('save draft'),false);assert.equal(calls.includes('export'),false);
+      assert.equal(calls.at(-1),'已取消另存，未创建可复用题目');
+    }else{assert.equal(calls.indexOf('save draft')<calls.indexOf('export'),true);assert.equal(calls.at(-1),'题目已另存；旧答案仍仅在原问卷统计中');}
+  }
+  const ctx={bankReturn:{page:'question',id:'q',skip:20},reusableVersionSkip:0,
+    reusableDetailPage:async id=>{assert.equal(id,'q');},sharedPage:async()=>{},reusableList:async()=>{}};
+  vm.createContext(ctx);vm.runInContext(returnCode,ctx);await ctx.returnFromBankSelection();
+  assert.equal(ctx.reusableVersionSkip,20);assert.equal(ctx.bankReturn,null);
+  let seenSkip=null;ctx.bankReturn={page:'shared',skip:12};ctx.sharedPage=async skip=>{seenSkip=skip;};
+  await ctx.returnFromBankSelection();assert.equal(seenSkip,12);
+})().catch(error=>{console.error(error);process.exitCode=1;});
+"""
+    result = subprocess.run([node, "-"], input=script, text=True, capture_output=True,
+                            cwd=Path(__file__).resolve().parents[1])
+    assert result.returncode == 0, result.stdout + result.stderr
+
+@pytest.mark.parametrize("source", ["argument", "environment", "path", "programfiles", "invalid"])
+def test_T49_mongodb_discovery_without_starting(source, tmp_path):
+    """换电脑时可找到不同位置的服务端；检查模式不启动数据库或创建数据目录。"""
+    import shutil
+    if os.name != "nt":
+        pytest.skip("Windows launcher discovery check")
+    powershell = shutil.which("powershell.exe")
+    assert powershell, "Windows PowerShell is required by start.bat"
+    root = tmp_path / "含空格的 交付副本"
+    scripts = root / "scripts"
+    scripts.mkdir(parents=True)
+    original = Path(__file__).resolve().parents[1] / "scripts/start-db.ps1"
+    copied = scripts / "start-db.ps1"
+    copied.write_bytes(original.read_bytes())
+    binary = root / "自定义 服务端" / "mongod.exe"
+    binary.parent.mkdir()
+    binary.touch()
+    env = dict(os.environ)
+    env.pop("MONGOD_EXE", None)
+    env["PATH"] = str(root / "empty-path")
+    env["ProgramFiles"] = str(root / "program-files")
+    extra = ""
+    if source == "argument":
+        env["MONGOD_EXE"] = str(root / "invalid-env.exe")
+        extra = " -Mongod '" + str(binary).replace("'", "''") + "'"
+    elif source == "environment":
+        env["MONGOD_EXE"] = str(binary)
+    elif source == "path":
+        env["PATH"] = str(binary.parent)
+    elif source == "programfiles":
+        for version in ["8.0", "10.0"]:
+            candidate = Path(env["ProgramFiles"]) / "MongoDB/Server" / version / "bin/mongod.exe"
+            candidate.parent.mkdir(parents=True)
+            candidate.touch()
+        binary = Path(env["ProgramFiles"]) / "MongoDB/Server/10.0/bin/mongod.exe"
+    else:
+        env["MONGOD_EXE"] = str(root / "missing.exe")
+    # PowerShell 启动会重设 ProgramFiles；在子进程中指定测试目录，不借用本机安装路径。
+    command = "[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false); $env:ProgramFiles = '" + env["ProgramFiles"].replace("'", "''") + "'; & '" + str(copied).replace("'", "''") + "' -CheckOnly" + extra
+    result = subprocess.run([powershell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
+                            env=env, text=True, encoding="utf-8", capture_output=True, timeout=20)
+    if source == "invalid":
+        assert result.returncode != 0
+        assert "MONGOD_EXE" in result.stderr
+    else:
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert Path(result.stdout.strip()).resolve() == binary.resolve()
+    assert not (root / ".local").exists()

@@ -37,7 +37,7 @@ def connect():
     return client, client[name]
 
 
-# Collection validators are preflighted together before any explicit upgrade writes.
+# 升级写入前统一检查所有集合的校验规则，避免检查到一半就修改数据库。
 SCHEMAS = {
     "users": {"usernameKey": "string", "username": "string", "passwordHash": "string", "createdAt": "date"},
     "surveys": {"ownerId": "objectId", "token": "string", "title": "string", "questions": "array", "status": "string",
@@ -100,6 +100,7 @@ def install(db, existing):
     db.sessions.create_index("tokenHash", unique=True)
     db.sessions.create_index("expiresAt", expireAfterSeconds=0)
     db.responses.create_index([("surveyId", 1), ("submittedAt", -1), ("_id", -1)])
+    # 唯一索引分别约束重复请求和限填一次；允许多次填写的答卷不受后者限制。
     db.responses.create_index([("surveyId", 1), ("respondentId", 1), ("submissionKey", 1)], unique=True)
     db.responses.create_index([("surveyId", 1), ("singleSubmissionKey", 1)], unique=True,
                               partialFilterExpression={"singleSubmissionKey": {"$exists": True}})
@@ -114,14 +115,14 @@ def install(db, existing):
     db.questionBanks.create_index([("ownerId", 1), ("archived", 1), ("updatedAt", -1), ("_id", -1)])
     db.questionBankItems.create_index([("bankId", 1), ("questionId", 1)], unique=True)
     db.questionBankItems.create_index([("bankId", 1), ("createdAt", -1), ("_id", -1)])
-    # Only drop the known redundant prefix after its replacement has been built.
+    # 先建好替代索引，再删除已知冗余索引，避免查询失去索引支持。
     for name, spec in db.responses.index_information().items():
         if spec["key"] == [("surveyId", 1), ("submittedAt", -1)] and not spec.get("unique"):
             db.responses.drop_index(name)
 
 
 def initialize(db):
-    # Existing stage-one data requires an explicit, backed-up upgrade, even if no v2 documents exist yet.
+    # 旧库必须先备份并显式升级，不能通过重启应用静默改写集合结构。
     existing = preflight(db)
     if existing and not SCHEMAS.keys() <= existing:
         raise RuntimeError("Incomplete migration; finish upgrade-db.py before starting the app")

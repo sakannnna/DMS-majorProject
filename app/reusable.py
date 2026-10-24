@@ -1,4 +1,4 @@
-"""Reusable questions, immutable versions and exact-version read authorization."""
+"""管理可复用题目与不可变版本，按准确版本检查读取权限。"""
 import copy
 import hashlib
 import json
@@ -85,6 +85,7 @@ def question_view(db, q):
 
 
 def complete_save(db, q, pending):
+    # 按预留的版本编号补齐写入；确认已有版本内容一致后才清除预留，支持中断恢复。
     if not pending or pending_view(pending)["needsRepair"]:
         fail("保存预留不完整，请核查备份；未丢弃原记录", 409)
     version = {"_id": pending["versionId"], "questionId": q["_id"], "versionNo": pending["versionNo"],
@@ -164,6 +165,7 @@ def save_version(db, user, qid, revision, key, content, parent, kind="save"):
         fail("已有正式版时请选择本系列来源版本")
     pending = {"operationId": key, "versionId": ObjectId(), "versionNo": q["nextVersionNo"],
                "parentVersionId": parent, "content": content, "requestHash": hashed, "snapshotHash": fingerprint({"content": content, "parent": parent}), "admittedAt": now()}
+    # 将编辑修订号与无待完成保存作为原子条件，同一次写入预留版本号，防止并发覆盖。
     reserved = db.reusableQuestions.find_one_and_update(
         {"_id": q["_id"], "editRevision": revision, "pendingSave": {"$exists": False}},
         {"$set": {"pendingSave": pending, "updatedAt": now()}, "$inc": {"editRevision": 1, "nextVersionNo": 1}},

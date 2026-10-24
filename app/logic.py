@@ -1,4 +1,4 @@
-"""Shared question validation and deterministic forward-only traversal."""
+"""统一执行题目校验与只向前的条件跳转。"""
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 
@@ -170,6 +170,7 @@ def walk(survey, answers, complete=False):
         fail("同一道题不能重复提交答案")
     if any(k not in {q["id"] for q in questions} for k in mapping):
         fail("答案含未知题目")
+    # 服务端按规则重算填写路径，不信任前端传来的题目顺序或跳过结果。
     path, normalized, i = [], [], 0
     while i < len(questions):
         q = questions[i]
@@ -183,6 +184,7 @@ def walk(survey, answers, complete=False):
         value = normalize(q, mapping[q["id"]])
         if value is not None:
             normalized.append({"questionId": q["id"], "value": value})
+        # 多条跳转规则按配置顺序取首条命中；结束跳转仍需由提交接口保存答卷。
         target = next((r["target"] for r in q["jumpRules"] if matches(r["conditions"], value)), None)
         if target == "END":
             break

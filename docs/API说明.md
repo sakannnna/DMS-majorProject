@@ -288,8 +288,8 @@ $share = Write-Api 'DELETE' "/api/question-versions/$vid/shares/$($share.recipie
 | --- | --- | --- |
 | api、boot、account | ErrorOut、SessionOut | 错误兼容字符串和数组；user先判断null；csrf用于后续写请求 |
 | list、renderEditor、collect、save | SurveySummaryOut、SurveyOut及嵌套题目 | 列表不读questions；编辑只使用完整问卷；写操作后使用返回的最新版本；选择题options及规则数组始终存在 |
-| reusableList、reusableEditor、reusableDetailPage | ReusableOut、VersionOut、HistoryOut | latestVersion/draft/pendingSave先判null；待恢复项未形成首版时不可选；历史节点先判accessible，不假设来源可读 |
-| picker、sharedPage、bankItemsPage、rq-pick、rq-upgrade-picker、intent | VersionOut、SurveyOut及idMap | 选准确版本，选入后用服务端返回的卷内ID；固定内容只读，必答/跳转另配；失败重发同一意图保留请求键，不把版本ID当答案questionId |
+| reusableList、reusableEditor、reusableDetailPage、sharedDetail、renderQuestionWorkspace | ReusableOut、VersionOut、HistoryOut | latestVersion/draft/pendingSave先判null；待恢复项未形成首版时不可选；历史节点先判accessible，不假设来源可读 |
+| picker、renderPicker、workspaceAction、sharedPage、bankItemsPage、intent | VersionOut、SurveyOut及idMap | 选准确版本，选入后用服务端返回的卷内ID；固定内容只读，必答/跳转另配；失败重发同一意图保留请求键，不把版本ID当答案questionId |
 | sharesPage、banksPage、bankItemsPage | ShareOut、BankOut、BankItemOut | 共享/题库/条目使用各自editRevision；受限条目先判accessible和selectable，不读取null version |
 | usagePage、crossPage、crossRows | UsagesOut、CrossStatsOut及明细/分布包装 | 三计数分别显示；问卷范围重置分页；明细用entryId区分重复位置，分页只换当前面板；内容及数字摘要先判null |
 | startFill、renderFill、constraintText、answerText | FillOut或PreviewOut.survey、Question | 两种survey共同部分可用于渲染，预览不得读取deadline或definitionVersion；validation未设值用null默认处理 |
@@ -298,3 +298,7 @@ $share = Write-Api 'DELETE' "/api/question-versions/$vid/shares/$($share.recipie
 | statistics、contents、content-page | StatsOut及按kind区分的QuestionStatsOut | 整卷与单题显示份数及respondentCount账号数，选项同时读取count和respondentCount；选择题依赖存在options；其他题依赖contents与分页；仅数字显示average；单题分页响应不带外层questions |
 
 响应模型的校验和OpenAPI机制见[FastAPI官方说明](https://fastapi.tiangolo.com/tutorial/response-model/)。直接构造JSONResponse的账号接口也显式通过输出模型，再设置Cookie；其余接口通过response_model验证和过滤。
+
+前端availableVersions只在本人系列读取返回404时查询准确共享版本；401、5xx及网络错误原样提示，不能当成没有版本或空列表。HTTP状态随页面错误对象保留，不改变API的ErrorOut结构。
+
+页面另存流程先完成名称与确认，再保存草稿和调用save-as-reusable；取消不发送写请求。该交互顺序不改变接口契约。历史返回nodes由详情页按需展开；加入题库返回原来源准确版本及页签，不改变BankItemOut或版本字段。管理名称PATCH与内容建版分别触发；同一详情页的统计/共享读当前versionId，接收者不枚举作者其他版本。选题弹窗打开/关闭只读，实际选入前静默保存草稿，再调用原新增/换版接口，用响应更新位置和editRevision；重复加入生成独立位置，仍使用原幂等键策略。页面切换丢弃迟到读取，属于前端状态控制，不新增或修改接口。

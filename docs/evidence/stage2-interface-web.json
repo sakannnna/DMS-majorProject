@@ -1,0 +1,113 @@
+{
+  "date": "2026-10-24",
+  "purpose": "Interaction hierarchy verification in a fictional isolated database; not user acceptance or capacity testing",
+  "database": "survey_course_test_e76ed7bbbef54159917f68c7d6f1676c",
+  "url": "http://localhost:8016/",
+  "userMainDatabaseModified": false,
+  "preparation": "Existing test_system.py Browser/reusable/add_version/add_to/publish/submit_values helpers via API; two fictional accounts, V1/V2, incoming/outgoing V1 shares, bank, draft and published fixed sample. API-prepared responses [10,20] and [30,null], replayed with same key.",
+  "expectedBeforeUI": {
+    "cross": {
+      "answerCount": 3,
+      "responseCount": 2,
+      "respondentCount": 2,
+      "average": "20",
+      "minimum": "10",
+      "maximum": "30"
+    },
+    "single": {
+      "total": 2,
+      "answered": [
+        2,
+        1
+      ]
+    },
+    "draftResponses": 0
+  },
+  "browserActuallyPerformed": [
+    "Login; navigate survey/question/bank main areas; open exact-version workspace",
+    "Rename management label; V1/V2 titles unchanged; edit V2 content, save draft then formal V3",
+    "Switch exact versions across stats/sharing; V2 initially had no shares, V1 statistics 3/2/2; shared receiver view has three tabs, no owner sharing controls or other versions",
+    "Add-to-bank cancel returns same V2; create another bank and add V3, returns same V3; source V3/V2/V1 expands in place",
+    "Cancel picker preserves unsaved description and dirty indicator without database writes; repeat cancellation independently checked after final code",
+    "Continuously add V1 twice as optional distinct positions without leaving picker; add incoming shared single and bank V1; switch first survey position to V3",
+    "Configure number gte 100 -> END; preview 100 reaches confirmation with only first answer and no submission",
+    "Add ordinary multiple question, min 1 max 2, any first option -> END; preview 0 goes through optional positions and selecting A reaches confirmation; no responses written",
+    "Published survey is read-only with separate metadata editor; change description and open single-survey stats: 2 responses, answered 2/1, average 20 each",
+    "Final current-version usage and all-version usage show V1 groups (4 draft/2 published positions) and V3 (1 draft position); V3 stats zero, not inherited V1 answers"
+  ],
+  "cancellationDatabaseComparison": {
+    "before": {
+      "revision": 16,
+      "description": "选题取消后应保留这段未保存说明",
+      "positions": 7
+    },
+    "after": {
+      "revision": 16,
+      "description": "选题取消后应保留这段未保存说明",
+      "positions": 7
+    },
+    "equal": true
+  },
+  "verifiedFinal": {
+    "managementName": "交互验收·年龄题",
+    "versionTitles": [
+      "年龄",
+      "周岁年龄",
+      "年龄（周岁）"
+    ],
+    "V3Parent": "V2",
+    "surveyPositionCount": 7,
+    "uniqueLocalIds": 7,
+    "required": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ],
+    "draftResponses": 0,
+    "publishedResponses": 2,
+    "cross": {
+      "answerCount": 3,
+      "responseCount": 2,
+      "respondentCount": 2,
+      "average": "20",
+      "minimum": "10",
+      "maximum": "30"
+    },
+    "single": {
+      "total": 2,
+      "answered": [
+        2,
+        1
+      ]
+    },
+    "bankCount": 2,
+    "bankItemCount": 2
+  },
+  "actualIssueAndRepair": "An add response could finish refreshing the picker after Done closed it, showing Cannot set properties of null. Ignore late reads after close/replacement, serialize picker commands, and invalidate old workspace reads when navigating. T46 Node regression passes; subsequent real UI add/close and final cancel have no such error.",
+  "checksByMethod": {
+    "browser": "Only the actions listed above",
+    "Node": "T44 cancellation and return; T46 late picker and workspace reads",
+    "APIandMongoDB": "All final assertions in this evidence; backend full regression separately in XML"
+  },
+  "sourceSha256": {
+    "app\\static\\app.js": "790092090e2216f075a647ab2ff73bd4eed0d3d1188f9a294fd2df40ef4e2403",
+    "app\\static\\style.css": "8ca3207189afa07b60dcac51489ab885c396c796464dd05bfec22e276f38c509",
+    "tests\\test_system.py": "39c9453aa52f07ab0b9bb0945d86abe32ee9c3900a7ca45fdb66af70cea2812c"
+  },
+  "backendAndScriptsUnchangedFromTurnStart": true,
+  "limits": [
+    "Not a repeat of every older browser scenario; no new full browser submission in this batch, previews only; prepared responses are API data",
+    "No cross-browser or mobile viewport execution in this batch",
+    "First-position ID preservation is covered by existing API regression, not an independent before/after ID capture in this browser batch",
+    "No AI log or Git commit in this turn"
+  ],
+  "cleanup": {
+    "tabClosed": true,
+    "serverStopped": true,
+    "databaseDropped": true
+  }
+}

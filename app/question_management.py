@@ -1,4 +1,4 @@
-"""Sharing, personal classification, owned usage and exact-version aggregation."""
+"""指定版本共享、个人题库及本人问卷范围内的跨卷统计。"""
 from bson import ObjectId
 from fastapi import APIRouter, Depends, Query, Request
 from pymongo import ReturnDocument
@@ -33,8 +33,7 @@ def share_view(db, share):
 @router.post("/api/question-versions/{vid}/derive", response_model=ReusableOut)
 def derive(vid: str, body: DeriveQuestion, request: Request, user=Depends(current_user)):
     db = request.app.state.db
-    # new_question checks an existing receipt before current authorization, so an admitted
-    # pending operation remains recoverable after revocation. No content escapes on denial.
+    # 内部先查已准入操作，再检查新操作权限，保证撤销后仍能恢复中断保存且不越权返回内容。
     v = db.questionVersions.find_one({"_id": object_id(vid)})
     if not v:
         fail("版本不存在或无权访问", 404)
@@ -294,15 +293,15 @@ def statistical_context(db, vid, user, selected):
         surveys = [s for s in surveys if s["_id"] in ids]
     clauses = [{"surveyId": s["_id"], "answers.questionId": {"$in": [q["id"] for q in s["questions"]
                 if q.get("sourceVersionId") == version_id]}} for s in surveys]
-    # Match each answer to its survey AND its exact local position; matching only the
-    # version's question IDs across all surveys could count an unrelated normal position.
+    # 答案必须同时匹配问卷与卷内位置，避免其他问卷的同名位置被误计入该版本。
     base = [{"$match": {"surveyId": {"$in": [s["_id"] for s in surveys]}}}, {"$unwind": "$answers"},
             {"$match": {"$or": clauses} if clauses else {"_id": {"$exists": False}}},
             {"$match": {"answers.value": {"$nin": [None, "", []]}}}]
     return version_id, content, surveys, base
 
 
-def counts(db, pipeline):
+def cross_counts(db, pipeline):
+    """分别统计回答条数、去重答卷份数和去重账号数；同卷重复位置分别计条数。"""
     rows = list(db.responses.aggregate(pipeline + [{"$facet": {
         "answers": [{"$count": "n"}],
         "responses": [{"$group": {"_id": "$_id"}}, {"$count": "n"}],
@@ -317,12 +316,12 @@ def cross_stats(vid: str, request: Request, user=Depends(current_user),
     db = request.app.state.db
     version_id, content, surveys, base = statistical_context(db, vid, user, surveyId)
     result = {"versionId": version_id, "scope": "ownedSurveys", "surveyIds": [str(s["_id"]) for s in surveys],
-              "title": content["title"], "kind": content["kind"], **counts(db, base),
+              "title": content["title"], "kind": content["kind"], **cross_counts(db, base),
               "options": [], "average": None, "minimum": None, "maximum": None}
     if content["kind"] in ("single", "multiple"):
         expanded = base + ([{"$unwind": "$answers.value"}] if content["kind"] == "multiple" else [])
         for o in content["options"]:
-            result["options"].append({**o, **counts(db, expanded + [{"$match": {"answers.value": o["id"]}}])})
+            result["options"].append({**o, **cross_counts(db, expanded + [{"$match": {"answers.value": o["id"]}}])})
     elif content["kind"] == "number":
         summary = list(db.responses.aggregate(base + [{"$group": {"_id": None,
             "average": {"$avg": "$answers.value"}, "minimum": {"$min": "$answers.value"}, "maximum": {"$max": "$answers.value"}}}]))

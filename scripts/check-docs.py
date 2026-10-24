@@ -1,4 +1,4 @@
-"""Check this change's Markdown links and fences; semantic review is still required."""
+"""检查本批文档的本地链接和代码围栏，内容是否准确仍需人工核对。"""
 import re
 import subprocess
 import sys
@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def changed_markdown():
-    # -z avoids Git quoting non-ASCII paths in filenames.
+    # 使用空字符分隔，避免 Git 转义中文文件名。
     names = []
     for command in (["git", "diff", "--name-only", "-z", "HEAD"],
                     ["git", "ls-files", "--others", "--exclude-standard", "-z"]):

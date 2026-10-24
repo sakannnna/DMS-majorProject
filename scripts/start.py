@@ -1,4 +1,4 @@
-"""Double-click launcher: reuse the local environment and open only a ready app."""
+"""复用本机环境，确认应用就绪后再打开网页。"""
 import argparse
 import json
 import os
@@ -28,7 +28,9 @@ def ready():
         with HTTP.open(URL + "/openapi.json", timeout=1) as response:
             spec = json.load(response)
         return spec.get("info", {}).get("title") == "MongoDB 问卷系统" and {
-            "/api/session", "/api/surveys", "/api/fill/{token}/submit"
+            "/api/session", "/api/surveys", "/api/fill/{token}/submit",
+            "/api/question-banks", "/api/shared-question-versions",
+            "/api/question-versions/{vid}/stats"
         } <= spec.get("paths", {}).keys()
     except (OSError, ValueError):
         return False
@@ -53,7 +55,7 @@ def main():
     if uri == "mongodb://127.0.0.1:27019":
         subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
                         "-File", str(ROOT / "scripts" / "start-db.ps1")], check=True)
-    # Custom URIs use the user's existing instance; never start an unrelated local DB.
+    # 自定义连接串使用用户指定的实例，不另行启动本机数据库。
     with MongoClient(uri, serverSelectionTimeoutMS=1000) as client:
         until = time.monotonic() + 15
         while True:

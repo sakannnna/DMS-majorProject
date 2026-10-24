@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-24",
+  "database": "survey_course_test_498aa38346174951b8fb41c3e7b25de4",
+  "method": "AI in-app browser at localhost:8015; API prepared fictitious account, root V1/V2, bank and draft. Existing user tabs/account data untouched.",
+  "expectedBeforeExecution": [
+    "Cancel name input does not save draft or create root",
+    "Management rename preserves immutable version titles",
+    "Click history expands next to its own version and can collapse",
+    "Add-to-bank and cancel bank selection both return to original version page"
+  ],
+  "actual": {
+    "cancelMessage": "已取消另存，未创建可复用题目",
+    "draftRevisionUnchanged": true,
+    "rootCount": 1,
+    "managementName": "验证1024旧题导出",
+    "versionTitles": [
+      "年龄",
+      "年龄"
+    ],
+    "historyInlineAndToggle": true,
+    "bankItems": 1,
+    "returnedToOriginalAfterAddAndCancel": true
+  },
+  "originOfInitialProblem": "User screenshots/feedback plus code inspection; no fabricated pre-fix browser run.",
+  "backendSourceChangedThisTurn": false,
+  "cleanup": {
+    "tabClosed": true,
+    "serverStopped": true,
+    "databaseDropped": true
+  },
+  "screenshot": "stage2-usability.png"
+}

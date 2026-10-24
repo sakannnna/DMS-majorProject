@@ -1,0 +1,78 @@
+{
+  "date": "2026-10-24",
+  "method": "Fresh Python 3.12 venv installed only requirements.txt in a delivery copy under a Chinese path containing spaces. Empty independent MongoDB database. Real HTTP on 127.0.0.1:8017 and AI browser operations; original main service and user data untouched.",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "pythonVersion": "Python 3.12.10",
+  "mongodbVersion": "8.3.11",
+  "freshDependencyInstall": true,
+  "pipCheck": "No broken requirements found.",
+  "applicationImportedFromDeliveryCopy": true,
+  "httpStatuses": {
+    "/": 200,
+    "/static/app.js": 200,
+    "/static/style.css": 200,
+    "/openapi.json": 200
+  },
+  "browserSteps": [
+    "register fictional account",
+    "login",
+    "create survey",
+    "open question-picker dialog",
+    "create ordinary single question",
+    "save",
+    "publish",
+    "open fill link",
+    "choose first option",
+    "confirm without submission",
+    "explicitly submit",
+    "return to statistics"
+  ],
+  "expectedBeforeBrowser": {
+    "responsesAtConfirmation": 0,
+    "responsesAfterSubmit": 1,
+    "accounts": 1,
+    "optionCounts": [
+      1,
+      0
+    ]
+  },
+  "actual": {
+    "responsesAtConfirmation": 0,
+    "responsesAfterSubmit": 1,
+    "accounts": 1,
+    "optionCounts": [
+      1,
+      0
+    ],
+    "savedAnswerMatches": true,
+    "consoleErrors": []
+  },
+  "screenshot": "stage2-portability-web.png",
+  "runtimeSha256": {
+    "app/contracts.py": "0a07246ff2a165fec50a7ecb120dcba6434992f4bfe9c16823e8eb07f99efa41",
+    "app/database.py": "aa6400e9a4298c7a132c06cb3e495794cda05258ad7ee001e4208465fe279301",
+    "app/logic.py": "e708e0945c8f29a92c6614b2468d60823f30f6fb647dd91cd4c183e6d8f0cc2c",
+    "app/main.py": "3f8f6be2d7c48dedcea3b964a3098a9edc6c1d103b733eb27c25b9168517a50a",
+    "app/models.py": "975f0596610b6861b4ceb0e5700120cfe8b1f6ee7f83d3401c98251d469ae39c",
+    "app/question_management.py": "015ea9e0a5247e352188e3788e97c3fdf46ad5d0e70d41d879c9c77a25f6143a",
+    "app/reusable.py": "a031cfae7f23df17d8d7185db3fe6ee9f5827b44c26f71827c4d69e076c9ef5d",
+    "app/security.py": "156c76b8d1bac67cd5688014e2f102a2a431b8265fd4642d0fc77ceff6c69fae",
+    "app/survey_questions.py": "01e816b582ab9c5bfd80073a3fddf0bdf3370cc4d07b57a64a880aa72e890d3d",
+    "app/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "app/static/app.js": "790092090e2216f075a647ab2ff73bd4eed0d3d1188f9a294fd2df40ef4e2403",
+    "app/static/style.css": "8ca3207189afa07b60dcac51489ab885c396c796464dd05bfec22e276f38c509",
+    "app/templates/index.html": "ad034dbf6ca6d6a43207fd51c147c6706489a67e73b26160a843ed2ccb772601"
+  },
+  "limits": [
+    "Same Windows host; not a physical second computer or macOS/Linux/old-browser test",
+    "MongoDB Server instance reused; database new and isolated",
+    "Real startup used documented manual uvicorn command on alternate port to preserve user main service; no claim of fresh double-click start",
+    "Windows discovery checks validate lookup paths without launching five MongoDB instances",
+    "No new full regression; selected smoke and five startup checks only"
+  ],
+  "cleanup": {
+    "tabClosed": true,
+    "serverStopped": true,
+    "databaseDropped": true
+  }
+}

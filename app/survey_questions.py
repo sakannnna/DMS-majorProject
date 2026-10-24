@@ -1,4 +1,4 @@
-"""One identity/authorization/CAS path for whole-save and instance operations."""
+"""整卷保存与单个题目操作共用来源校验及修订号检查，防止并发覆盖。"""
 import copy
 
 from pymongo import ReturnDocument
@@ -28,6 +28,7 @@ def normalize_positions(db, survey, user, data, revision, key):
         if old and old.get("sourceVersionId"):
             if source != old["sourceQuestionId"] or not version:
                 fail("已有可复用位置不能移除来源或换成另一系列")
+            # 已保存快照不重新依赖共享权限；换入新版本时才重新授权并读取内容。
             if version == old["sourceVersionId"]:
                 supplied = prepare_content(QuestionContent(**content_of(q)))
                 if fingerprint(supplied) != fingerprint(content_of(old)):
@@ -47,13 +48,12 @@ def normalize_positions(db, survey, user, data, revision, key):
             if str(v["questionId"]) != source:
                 fail("版本不属于来源题目")
             temporary = q["id"]
+            # 同一版本的各次选入使用独立位置；同一操作重试仍生成相同标识。
             q["id"] = "r" + fingerprint([str(survey["_id"]), revision, key, temporary])[:48]
             if temporary in id_map:
                 fail("批内临时位置标识重复")
             id_map[temporary] = q["id"]
             q.update(content_of(v["content"]))
-        elif old and old.get("sourceVersionId"):
-            fail("不能删除可复用位置的来源标签")
     for q in data["questions"]:
         for rule in q.get("jumpRules", []):
             rule["target"] = id_map.get(rule["target"], rule["target"])

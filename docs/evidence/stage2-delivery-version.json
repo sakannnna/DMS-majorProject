@@ -1,0 +1,130 @@
+{
+  "date": "2026-10-24",
+  "baseCommit": "ef27f3321701c91d63bb7374a3549e48cc62248b",
+  "workingTree": "Final release source, reviewed report and PDF; release tagged stage2-final. M106 full regression and O10 selected portability checks remain separately identified.",
+  "sourceSha256": {
+    "app/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "app/contracts.py": "0a07246ff2a165fec50a7ecb120dcba6434992f4bfe9c16823e8eb07f99efa41",
+    "app/database.py": "aa6400e9a4298c7a132c06cb3e495794cda05258ad7ee001e4208465fe279301",
+    "app/logic.py": "e708e0945c8f29a92c6614b2468d60823f30f6fb647dd91cd4c183e6d8f0cc2c",
+    "app/main.py": "3f8f6be2d7c48dedcea3b964a3098a9edc6c1d103b733eb27c25b9168517a50a",
+    "app/models.py": "975f0596610b6861b4ceb0e5700120cfe8b1f6ee7f83d3401c98251d469ae39c",
+    "app/question_management.py": "015ea9e0a5247e352188e3788e97c3fdf46ad5d0e70d41d879c9c77a25f6143a",
+    "app/reusable.py": "a031cfae7f23df17d8d7185db3fe6ee9f5827b44c26f71827c4d69e076c9ef5d",
+    "app/security.py": "156c76b8d1bac67cd5688014e2f102a2a431b8265fd4642d0fc77ceff6c69fae",
+    "app/static/app.js": "790092090e2216f075a647ab2ff73bd4eed0d3d1188f9a294fd2df40ef4e2403",
+    "app/static/style.css": "8ca3207189afa07b60dcac51489ab885c396c796464dd05bfec22e276f38c509",
+    "app/survey_questions.py": "01e816b582ab9c5bfd80073a3fddf0bdf3370cc4d07b57a64a880aa72e890d3d",
+    "app/templates/index.html": "ad034dbf6ca6d6a43207fd51c147c6706489a67e73b26160a843ed2ccb772601",
+    "docs/API说明.md": "ce83e10905580ad05d1184b0a3826ac366517d55150cd1d7ac9ecbe786430dd8",
+    "docs/工作与记录规范.md": "133d25a03a76959bd87fd54e97620803f748e3238469a5c966b204a6df077fc1",
+    "docs/测试记录.md": "5547ba21ae2f83a583886653e8f9f16b77207e0a91e1f18ca8c471cccef02b78",
+    "docs/阶段二报告.md": "8aac020b051bfaab8e55a1638fd244ba0ff18a8f47139db0d533e026c6c9ab05",
+    "docs/需求与设计.md": "cdfe61352f607e26da16f44357f1969d9eced1c9c4e8441eea7a447f99a003b1",
+    "README.md": "991f87c4b20fb7ffc7636587a981a542bb5254fc0e54ea866d7593f811b2048a",
+    "requirements.txt": "73d967cf9428575b4fa085c3500d748ae226264733055b637ccdbff58ff60523",
+    "scripts/check-docs.py": "8cc46a43b33daccf8e0ad719dda5f22394382402647222b8054441434933dd54",
+    "scripts/demo.py": "145dffc50918405cda3480b365d7ea485080326df19ee2b545bd5eea88045e8a",
+    "scripts/package-delivery.py": "33122dc22b0b54882fa81a2f3eef71a431e4c26bf6ba0a8a29fc0702d78508f7",
+    "scripts/start-db.ps1": "53022e5ce057608d00f7836b0e6d85e3110d0adb654a7fd1aefe7f8ff26a6a52",
+    "scripts/start.py": "d96d328da6420e84d57cfe9535f00e57afaeb8eb7ffb62b96a5f25adbb596db3",
+    "scripts/upgrade-db.py": "2346988df52093186dff6a6e8126dc9eafb213f2d5f9ba37e4c3bc21a6c96d1e",
+    "start.bat": "93d0782f76387dce1160dab2b79f9aae1a1c6a06ebf2ebc681a3dd7bebbadca1",
+    "tests/test_system.py": "df3c85dadb650b362c8036e167c91b27702f831d0d3c436afa3ac1f4c095525b",
+    "docs/AI使用日志.md": "4a44e06ef946434764bbc6f18b5a556cb7cccd365a5bc74126164823aa6adc65",
+    "docs/evidence/stage2-portability-web.json": "e7d42bc99b9a7db311bec08af8119b61472ea209f2fa4613faa700fd9c74bbde",
+    ".gitignore": "32a9e889617b295fd0419db3bbe984dc0c6ec591e7b898998948aebc44b67b3b"
+  },
+  "reportSourceSha256": "8aac020b051bfaab8e55a1638fd244ba0ff18a8f47139db0d533e026c6c9ab05",
+  "reportPdfSha256": "c8c5428dd3d9cc7e20297e6820c526ba7fa6a2d2090fbed52335a84bfe3d4aed",
+  "finalRegression": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "106",
+    "time": "51.036",
+    "timestamp": "2026-10-24T16:44:21.898753+08:00",
+    "hostname": "faint"
+  },
+  "pytestReportedSeconds": 51.04,
+  "checks": [
+    "Historical M full regression: 106 passed, 51.04s; immutable XML retained. O does not claim a new full regression.",
+    "O final selected smoke: 10 passed, 2.95s; tested from independent delivery copy using a fresh venv with requirements.txt installed.",
+    "Clean pip install and pip check passed; no copied venv or application business data.",
+    "T49 five real PowerShell lookup checks passed, including Chinese/space paths, parameter priority, numeric version ordering and invalid path.",
+    "T50 real IAB workflow on empty separate DB, actual formal submission and MongoDB answer check passed. Temporary tab/server/database cleaned.",
+    "Python/JavaScript/PowerShell syntax and document links checked before packaging.",
+    "M/N preview versus formal submission boundaries and AI log wording corrected; no new AI log entry.",
+    "Final reviewed report exported with six tables and a vector relationship diagram; all five PDF pages rendered and visually checked; text and GitHub link verified. No new business test run for document/export-only changes."
+  ],
+  "limits": [
+    "Last full106 regression belongs to M; O changes startup discovery and adds5 parameter checks, validated by selected10 rather than all111 collected checks.",
+    "M used previews/API-prepared responses; N/T48 completed five formal browser submissions; O/T50 separately completed one formal browser submission in an empty test DB.",
+    "O clean install uses same Windows host and existing MongoDB server process; not a physical second PC, macOS/Linux, old-browser or capacity certification.",
+    "O app started with documented manual uvicorn command on alternate port; lookup checks do not prove fresh-machine double-click launch.",
+    "No business scope, backend authorization or statistics semantics changed; no new AI log entry; final Git submission handled separately from historical test execution."
+  ],
+  "packageVerification": "Run scripts/package-delivery.py against these hashes; ZIP comment identifies historical HEAD and this evidence. No archive hash inside its own content.",
+  "previousKVersion": "stage2-delivery-K-version.json",
+  "previousLVersion": "stage2-usability-version.json",
+  "manualAcceptance": {
+    "case": "T48",
+    "evidence": "stage2-accept789-web.json",
+    "runtimeMatchesFullRegression": true,
+    "fullRegressionRerun": false,
+    "retainsAuthorizedMainDbSamples": true
+  },
+  "aiLogUpdate": {
+    "date": "2026-10-24",
+    "authorization": "User explicitly requested updating AI log",
+    "covers": [
+      "L manual feedback fixes",
+      "M frontend interaction redesign and validation",
+      "N original manual acceptance steps7/8/9"
+    ],
+    "systemCodeChanged": false,
+    "businessTestsRerun": false
+  },
+  "fullRegressionEvidence": "stage2-interface-regression.xml",
+  "fullRegressionRuntimeEvidence": "stage2-accept789-web.json: sourceSha256 records the unchanged M/N runtime before O startup changes",
+  "selectedRegression": {
+    "batch": "O",
+    "evidence": "stage2-portability-clean-smoke.xml",
+    "junit": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "10",
+      "time": "2.933",
+      "timestamp": "2026-10-24T19:22:53.168999+08:00",
+      "hostname": "faint"
+    },
+    "pytestReportedSeconds": 2.95,
+    "cases": [
+      "T23",
+      "T42",
+      "T43",
+      "T44",
+      "T46",
+      "T49 (five parameter cases)"
+    ],
+    "freshVenv": true
+  },
+  "portabilityReview": {
+    "date": "2026-10-24",
+    "evidence": "stage2-portability-web.json",
+    "readmeFirstRunUpdated": true,
+    "mongoDiscovery": [
+      "explicit argument",
+      "MONGOD_EXE",
+      "PATH",
+      "Program Files versions",
+      "legacy D drive"
+    ],
+    "browserFlow": "new isolated account; create, publish, fill, confirm, submit and statistics; expected 1/1 with options 1/0 matched",
+    "noNewFullRegression": true
+  },
+  "releaseRef": "stage2-final"
+}

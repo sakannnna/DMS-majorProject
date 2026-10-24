@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="10" time="3.241" timestamp="2026-10-24T19:10:38.804440+08:00" hostname="faint"><testcase classname="tests.test_system" name="test_T23_complete_flow_smoke" time="0.679" /><testcase classname="tests.test_system" name="test_T42_launcher_rejects_stage_one_service" time="0.027" /><testcase classname="tests.test_system" name="test_T43_frontend_version_fallback_preserves_errors" time="0.073" /><testcase classname="tests.test_system" name="test_T46_picker_ignores_result_after_close" time="0.066" /><testcase classname="tests.test_system" name="test_T44_cancel_export_and_return_to_question" time="0.068" /><testcase classname="tests.test_system" name="test_T49_mongodb_discovery_without_starting[argument]" time="0.233" /><testcase classname="tests.test_system" name="test_T49_mongodb_discovery_without_starting[environment]" time="0.218" /><testcase classname="tests.test_system" name="test_T49_mongodb_discovery_without_starting[path]" time="0.224" /><testcase classname="tests.test_system" name="test_T49_mongodb_discovery_without_starting[programfiles]" time="0.349"><failure message="assert WindowsPath('D:/MongoDB/Server/bin/mongod.exe') == WindowsPath('C:/Users/black/AppData/Local/Temp/pytest-of-black/pytest-21/test_T49_mongodb_discovery_wit3/含空格的 交付副本/program-files/MongoDB/Server/10.0/bin/mongod.exe')&#10; +  where WindowsPath('D:/MongoDB/Server/bin/mongod.exe') = resolve()&#10; +    where resolve = WindowsPath('D:/MongoDB/Server/bin/mongod.exe').resolve&#10; +      where WindowsPath('D:/MongoDB/Server/bin/mongod.exe') = Path('D:\\MongoDB\\Server\\bin\\mongod.exe')&#10; +        where 'D:\\MongoDB\\Server\\bin\\mongod.exe' = &lt;built-in method strip of str object at 0x00000194A1F04530&gt;()&#10; +          where &lt;built-in method strip of str object at 0x00000194A1F04530&gt; = 'D:\\MongoDB\\Server\\bin\\mongod.exe\n'.strip&#10; +            where 'D:\\MongoDB\\Server\\bin\\mongod.exe\n' = CompletedProcess(args=['C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', '-NoProfile', '-ExecutionPoli...格的 交付副本\\scripts\\start-db.ps1' -CheckOnly&quot;], returncode=0, stdout='D:\\MongoDB\\Server\\bin\\mongod.exe\n', stderr='').stdout&#10; +  and   WindowsPath('C:/Users/black/AppData/Local/Temp/pytest-of-black/pytest-21/test_T49_mongodb_discovery_wit3/含空格的 交付副本/program-files/MongoDB/Server/10.0/bin/mongod.exe') = resolve()&#10; +    where resolve = WindowsPath('C:/Users/black/AppData/Local/Temp/pytest-of-black/pytest-21/test_T49_mongodb_discovery_wit3/含空格的 交付副本/program-files/MongoDB/Server/10.0/bin/mongod.exe').resolve">source = 'programfiles'
+tmp_path = WindowsPath('C:/Users/black/AppData/Local/Temp/pytest-of-black/pytest-21/test_T49_mongodb_discovery_wit3')
+
+    @pytest.mark.parametrize("source", ["argument", "environment", "path", "programfiles", "invalid"])
+    def test_T49_mongodb_discovery_without_starting(source, tmp_path):
+        """换电脑时可找到不同位置的服务端；检查模式不启动数据库或创建数据目录。"""
+        import shutil
+        if os.name != "nt":
+            pytest.skip("Windows launcher discovery check")
+        powershell = shutil.which("powershell.exe")
+        assert powershell, "Windows PowerShell is required by start.bat"
+        root = tmp_path / "含空格的 交付副本"
+        scripts = root / "scripts"
+        scripts.mkdir(parents=True)
+        original = Path(__file__).resolve().parents[1] / "scripts/start-db.ps1"
+        copied = scripts / "start-db.ps1"
+        copied.write_bytes(original.read_bytes())
+        binary = root / "自定义 服务端" / "mongod.exe"
+        binary.parent.mkdir()
+        binary.touch()
+        env = dict(os.environ)
+        env.pop("MONGOD_EXE", None)
+        env["PATH"] = str(root / "empty-path")
+        env["ProgramFiles"] = str(root / "program-files")
+        extra = ""
+        if source == "argument":
+            env["MONGOD_EXE"] = str(root / "invalid-env.exe")
+            extra = " -Mongod '" + str(binary).replace("'", "''") + "'"
+        elif source == "environment":
+            env["MONGOD_EXE"] = str(binary)
+        elif source == "path":
+            env["PATH"] = str(binary.parent)
+        elif source == "programfiles":
+            for version in ["8.0", "10.0"]:
+                candidate = Path(env["ProgramFiles"]) / "MongoDB/Server" / version / "bin/mongod.exe"
+                candidate.parent.mkdir(parents=True)
+                candidate.touch()
+            binary = Path(env["ProgramFiles"]) / "MongoDB/Server/10.0/bin/mongod.exe"
+        else:
+            env["MONGOD_EXE"] = str(root / "missing.exe")
+        command = "[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false); &amp; '" + str(copied).replace("'", "''") + "' -CheckOnly" + extra
+        result = subprocess.run([powershell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
+                                env=env, text=True, encoding="utf-8", capture_output=True, timeout=20)
+        if source == "invalid":
+            assert result.returncode != 0
+            assert "MONGOD_EXE" in result.stderr
+        else:
+            assert result.returncode == 0, result.stdout + result.stderr
+&gt;           assert Path(result.stdout.strip()).resolve() == binary.resolve()
+E           assert WindowsPath('D:/MongoDB/Server/bin/mongod.exe') == WindowsPath('C:/Users/black/AppData/Local/Temp/pytest-of-black/pytest-21/test_T49_mongodb_discovery_wit3/含空格的 交付副本/program-files/MongoDB/Server/10.0/bin/mongod.exe')
+E            +  where WindowsPath('D:/MongoDB/Server/bin/mongod.exe') = resolve()
+E            +    where resolve = WindowsPath('D:/MongoDB/Server/bin/mongod.exe').resolve
+E            +      where WindowsPath('D:/MongoDB/Server/bin/mongod.exe') = Path('D:\\MongoDB\\Server\\bin\\mongod.exe')
+E            +        where 'D:\\MongoDB\\Server\\bin\\mongod.exe' = &lt;built-in method strip of str object at 0x00000194A1F04530&gt;()
+E            +          where &lt;built-in method strip of str object at 0x00000194A1F04530&gt; = 'D:\\MongoDB\\Server\\bin\\mongod.exe\n'.strip
+E            +            where 'D:\\MongoDB\\Server\\bin\\mongod.exe\n' = CompletedProcess(args=['C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', '-NoProfile', '-ExecutionPoli...格的 交付副本\\scripts\\start-db.ps1' -CheckOnly"], returncode=0, stdout='D:\\MongoDB\\Server\\bin\\mongod.exe\n', stderr='').stdout
+E            +  and   WindowsPath('C:/Users/black/AppData/Local/Temp/pytest-of-black/pytest-21/test_T49_mongodb_discovery_wit3/含空格的 交付副本/program-files/MongoDB/Server/10.0/bin/mongod.exe') = resolve()
+E            +    where resolve = WindowsPath('C:/Users/black/AppData/Local/Temp/pytest-of-black/pytest-21/test_T49_mongodb_discovery_wit3/含空格的 交付副本/program-files/MongoDB/Server/10.0/bin/mongod.exe').resolve
+
+tests\test_system.py:1557: AssertionError</failure></testcase><testcase classname="tests.test_system" name="test_T49_mongodb_discovery_without_starting[invalid]" time="0.274" /></testsuite></testsuites>

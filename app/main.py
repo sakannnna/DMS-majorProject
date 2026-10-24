@@ -91,7 +91,7 @@ def question_stats(db, survey, question, skip=0, limit=20):
                               "respondentCount": totals.get(o["id"], {}).get("respondentCount", 0)} for o in question["options"]]
     else:
         rows = list(db.responses.aggregate(base + [{"$sort": {"submittedAt": -1, "_id": -1}}, {"$skip": skip}, {"$limit": limit}]))
-        # User references never leave this function; resolve names only for non-anonymous rows.
+        # 仅为非匿名答卷查询用户名，返回结果不携带填写者的内部账号标识。
         user_ids = {r["respondentId"] for r in rows if not r["anonymous"]}
         names = {u["_id"]: u["username"] for u in db.users.find({"_id": {"$in": list(user_ids)}})}
         result["contents"] = [{"value": public(r["answers"]["value"]), "author": "匿名" if r["anonymous"] else names.get(r["respondentId"], "账号已不存在"),
@@ -347,13 +347,14 @@ def create_app(database=None):
             if existing["payloadHash"] != payload_hash:
                 fail("同一提交键不能用于不同内容", 409)
             return {"message": "提交成功", "responseId": str(existing["_id"]), "replayed": True}
+        # 先识别已成功的同键请求，关闭后重试也返回原答卷，不重复保存。
         existing = db.responses.find_one(retry_query)
         if existing:
             return retry(existing)
         accessible(db, token)
         ensure_available(db, survey, user)
         _, answers = walk(survey, body.answers, complete=True)
-        # Last state/deadline read is admission. An admitted in-flight insert may finish after close.
+        # 最后一次状态与截止时间检查作为准入点，已准入的在途提交可在关闭后完成。
         accessible(db, token)
         response = {**retry_query, "definitionVersion": survey["definitionVersion"], "anonymous": bool(body.anonymous and survey["allowAnonymous"]),
                     "answers": answers, "submittedAt": now(), "schemaVersion": 1, "payloadHash": payload_hash}

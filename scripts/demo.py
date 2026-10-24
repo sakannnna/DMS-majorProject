@@ -1,4 +1,4 @@
-"""Create an optional, reproducible example through the public API; never overwrite surveys."""
+"""通过正式接口创建可复现示例，不覆盖已有问卷。"""
 import getpass
 import os
 

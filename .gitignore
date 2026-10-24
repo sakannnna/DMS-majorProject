@@ -5,3 +5,9 @@ __pycache__/
 *.pyc
 .env
 ~$*
+
+output/*
+!output/pdf/
+output/pdf/*
+!output/pdf/2026_ECNU_PJ1_1_陈建宇.pdf
+!output/pdf/2026_ECNU_PJ1_2_陈建宇.pdf

@@ -1,0 +1,225 @@
+{
+  "case": "T48 original manual acceptance steps 7-9",
+  "date": "2026-10-24",
+  "url": "http://127.0.0.1:8009/",
+  "method": "AI operated built-in browser on user-authorized existing main-service accounts; all business writes, sharing, publication and five submissions were webpage operations. Python only read MongoDB for independent verification. No API-created business sample and no system code change.",
+  "accounts": {
+    "A": "创建者",
+    "B": "接受者"
+  },
+  "credentialsRecorded": false,
+  "target": {
+    "managementName": "验收1024复用年龄",
+    "version": 1,
+    "questionId": "6adc5a21bb6b4c8edd5b7627",
+    "versionId": "6adc5a34bb6b4c8edd5b7628"
+  },
+  "preexistingBoundary": "Original V1/V2/V3 existed. V4 was not created because steps 7-9 only require V1. Old exported series and user main-flow survey were not changed or merged.",
+  "expectedDeclaredBeforeWork": {
+    "A": {
+      "answers": [
+        [
+          10,
+          20
+        ],
+        [
+          30,
+          null
+        ],
+        [
+          40
+        ]
+      ],
+      "BAnswerToS2": [
+        50
+      ],
+      "summary": [
+        5,
+        4,
+        2
+      ],
+      "average": 30
+    },
+    "S1Only": {
+      "summary": [
+        3,
+        2,
+        1
+      ],
+      "average": 20
+    },
+    "BPrivateS3": {
+      "summary": [
+        1,
+        1,
+        1
+      ],
+      "average": 25
+    },
+    "ownerAfterS3": "remains 5/4/2 average 30"
+  },
+  "surveys": [
+    {
+      "title": "验收1024S1",
+      "id": "6adc74e1bb6b4c8edd5b7631",
+      "owner": "A",
+      "localIds": [
+        "rd529d1b213c52a58e7b8b2a3caf9404dade7187ec9d8feae",
+        "rb6a058ca018b4f7d00ee262ae9d3120f111df3f8cb391c4c"
+      ],
+      "status": "published",
+      "responseCount": 2
+    },
+    {
+      "title": "验收1024S2",
+      "id": "6adc7628bb6b4c8edd5b7634",
+      "owner": "A",
+      "localIds": [
+        "r5eadd08f4c4cef0dfb50409d1a6b703fedbc5aa6cd9643b8"
+      ],
+      "status": "published",
+      "responseCount": 2
+    },
+    {
+      "title": "验收1024S3",
+      "id": "6adc77c4bb6b4c8edd5b763f",
+      "owner": "B",
+      "localIds": [
+        "r85c04f84709bdc4ea167ea5c0c672e488627a4254e149837"
+      ],
+      "status": "published",
+      "responseCount": 1
+    }
+  ],
+  "verifiedFromStoredAnswers": {
+    "AAll": {
+      "answerCount": 5,
+      "responseCount": 4,
+      "respondentCount": 2,
+      "average": "30",
+      "minimum": "10",
+      "maximum": "50",
+      "distribution": {
+        "10": 1,
+        "20": 1,
+        "30": 1,
+        "40": 1,
+        "50": 1
+      }
+    },
+    "S1Only": {
+      "answerCount": 3,
+      "responseCount": 2,
+      "respondentCount": 1,
+      "average": "20",
+      "minimum": "10",
+      "maximum": "30",
+      "distribution": {
+        "10": 1,
+        "20": 1,
+        "30": 1
+      }
+    },
+    "BPrivateS3": {
+      "answerCount": 1,
+      "responseCount": 1,
+      "respondentCount": 1,
+      "average": "25",
+      "minimum": "25",
+      "maximum": "25",
+      "distribution": {
+        "25": 1
+      }
+    },
+    "accountAnswerMapping": "exact expected match",
+    "S1SecondResponseOptionalAnswer": "not stored, not counted"
+  },
+  "browserOutcomes": {
+    "step7": "AAll 5/4/2 avg30; distribution 10..50 each1; S1 scope3/2/1 avg20; usage S1 two positions and S2 one",
+    "step8": "Only V1 shared; B shared list has no V2/V3 or owner version selector; B saved bank link, own derived V1, original shared V1 S3 draft before revocation. After revoke shared list empty, bank placeholder only, shared and bank pickers cannot select original. Own derived V1 readable, source unavailable placeholder, own V2 saved successfully.",
+    "step9": "Original S3 published after revoke; B filled25, confirmation still0 responses, explicit submit creates1 response. Snapshot statistics only1/1/1 avg25; A still5/4/2 avg30 with no S3."
+  },
+  "revokeBoundary": {
+    "s3Unchanged": true,
+    "draftRevision": 4,
+    "responses": 0,
+    "shareActive": false
+  },
+  "S3BeforeRevoke": {
+    "id": "6adc77c4bb6b4c8edd5b763f",
+    "editRevision": 4,
+    "status": "draft",
+    "sha256": "9f7383d35f573de404f4d6c1bce177e033c58ef1a8dea2a25798d9d970445db1",
+    "sourceVersionId": "6adc5a34bb6b4c8edd5b7628",
+    "sourceQuestionId": "6adc5a21bb6b4c8edd5b7627",
+    "localQuestionId": "r85c04f84709bdc4ea167ea5c0c672e488627a4254e149837",
+    "responses": 0
+  },
+  "currentShareActive": false,
+  "derivedVersionCount": 2,
+  "newMainDatabaseRecords": {
+    "surveys": {
+      "added": 3,
+      "existingDocumentsUnchanged": true
+    },
+    "responses": {
+      "added": 5,
+      "existingDocumentsUnchanged": true
+    },
+    "reusableQuestions": {
+      "added": 1,
+      "existingDocumentsUnchanged": true
+    },
+    "questionVersions": {
+      "added": 2,
+      "existingDocumentsUnchanged": true
+    },
+    "questionBanks": {
+      "added": 1,
+      "existingDocumentsUnchanged": true
+    },
+    "questionBankItems": {
+      "added": 1,
+      "existingDocumentsUnchanged": true
+    },
+    "questionShares": {
+      "added": 1,
+      "existingDocumentsUnchanged": true
+    }
+  },
+  "sourceSha256": {
+    "app/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "app/contracts.py": "0a07246ff2a165fec50a7ecb120dcba6434992f4bfe9c16823e8eb07f99efa41",
+    "app/database.py": "aa6400e9a4298c7a132c06cb3e495794cda05258ad7ee001e4208465fe279301",
+    "app/logic.py": "e708e0945c8f29a92c6614b2468d60823f30f6fb647dd91cd4c183e6d8f0cc2c",
+    "app/main.py": "3f8f6be2d7c48dedcea3b964a3098a9edc6c1d103b733eb27c25b9168517a50a",
+    "app/models.py": "975f0596610b6861b4ceb0e5700120cfe8b1f6ee7f83d3401c98251d469ae39c",
+    "app/question_management.py": "015ea9e0a5247e352188e3788e97c3fdf46ad5d0e70d41d879c9c77a25f6143a",
+    "app/reusable.py": "a031cfae7f23df17d8d7185db3fe6ee9f5827b44c26f71827c4d69e076c9ef5d",
+    "app/security.py": "156c76b8d1bac67cd5688014e2f102a2a431b8265fd4642d0fc77ceff6c69fae",
+    "app/static/app.js": "790092090e2216f075a647ab2ff73bd4eed0d3d1188f9a294fd2df40ef4e2403",
+    "app/static/style.css": "8ca3207189afa07b60dcac51489ab885c396c796464dd05bfec22e276f38c509",
+    "app/survey_questions.py": "01e816b582ab9c5bfd80073a3fddf0bdf3370cc4d07b57a64a880aa72e890d3d",
+    "app/templates/index.html": "ad034dbf6ca6d6a43207fd51c147c6706489a67e73b26160a843ed2ccb772601",
+    "scripts/check-docs.py": "8cc46a43b33daccf8e0ad719dda5f22394382402647222b8054441434933dd54",
+    "scripts/demo.py": "145dffc50918405cda3480b365d7ea485080326df19ee2b545bd5eea88045e8a",
+    "scripts/package-delivery.py": "33122dc22b0b54882fa81a2f3eef71a431e4c26bf6ba0a8a29fc0702d78508f7",
+    "scripts/start-db.ps1": "a9fc274245385510c24efe6b918272f6817ba3a06a330e7d6e6798a9d651a866",
+    "scripts/start.py": "d96d328da6420e84d57cfe9535f00e57afaeb8eb7ffb62b96a5f25adbb596db3",
+    "scripts/upgrade-db.py": "2346988df52093186dff6a6e8126dc9eafb213f2d5f9ba37e4c3bc21a6c96d1e",
+    "tests/test_system.py": "39c9453aa52f07ab0b9bb0945d86abe32ee9c3900a7ca45fdb66af70cea2812c"
+  },
+  "screenshots": [
+    "stage2-accept789-A-stats.png",
+    "stage2-accept789-S1-scope.png",
+    "stage2-accept789-revoked-source.png",
+    "stage2-accept789-B-stats.png"
+  ],
+  "retention": "Keep three surveys, five responses, own derived question with V1/V2, bank/link and revoked share for user review. Leave browser signed in as A on original V1 all-scope stats.",
+  "limits": [
+    "Only requested manual7/8/9 paths, not all historical tests",
+    "No forged HTTP authorization requests, performance or pagination testing in this batch",
+    "Existing106 full regression is from prior code-identical M batch; not rerun for this browser-only work",
+    "No AI log or Git commit"
+  ]
+}

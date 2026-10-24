@@ -1,4 +1,4 @@
-"""Explicit, resumable stage-two upgrade. Stop the app before running."""
+"""显式执行可恢复的第二阶段升级；运行前须停止应用及其他数据库写入。"""
 import argparse
 import hashlib
 import re
@@ -27,7 +27,7 @@ def backup_database(db, directory):
 
 
 def restore_database(db, directory):
-    """Restore into an empty alternate database; never drop the source or destination."""
+    """只恢复到另一个空库，不删除源库或目标库的已有数据。"""
     directory = Path(directory).resolve()
     manifest = json_util.loads((directory / "manifest.json").read_text(encoding="utf-8"))
     if db.list_collection_names():
